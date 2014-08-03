@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <MinimumVisualStudioVersion>11.0</MinimumVisualStudioVersion>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{C5D001C5-907C-4C4C-875A-F73AE3F6513F}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Ravc</RootNamespace>
+    <AssemblyName>Ravc</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkProfile>Profile7</TargetFrameworkProfile>
+    <FileAlignment>512</FileAlignment>
+    <ProjectTypeGuids>{786C830F-07A1-408B-BD7F-6EE04809D6DB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\..\Build\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\..\Build\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- A reference to the entire .NET Framework is automatically included -->
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Encoding\CompressedFrame.cs" />
+    <Compile Include="Encoding\EncodingConstants.cs" />
+    <Compile Include="Encoding\ICpuSideCodec.cs" />
+    <Compile Include="Encoding\Impl\CpuSideCodec.cs" />
+    <Compile Include="FrameInfo.cs" />
+    <Compile Include="Infrastructure\Dimensions.cs" />
+    <Compile Include="Encoding\Transforms\ArithmeticCoding.cs" />
+    <Compile Include="Encoding\Transforms\DeltaCoding.cs" />
+    <Compile Include="Encoding\Transforms\SeparateChannelsTransform.cs" />
+    <Compile Include="Encoding\Transforms\TernaryBlockEncoding.cs" />
+    <Compile Include="Encoding\Transforms\ZeroLengthEncoding.cs" />
+    <Compile Include="Encoding\UncompressedFrame.cs" />
+    <Compile Include="FrameType.cs" />
+    <Compile Include="Infrastructure\ILogger.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Streaming\IStreamBroadcaster.cs" />
+    <Compile Include="Streaming\IStreamReceiver.cs" />
+    <Compile Include="Streaming\StreamMessageType.cs" />
+    <Compile Include="Utility\BitHacks.cs" />
+    <Compile Include="Utility\BitReader.cs" />
+    <Compile Include="Utility\BitWriter.cs" />
+    <Compile Include="Utility\ByteArrayPool.cs" />
+    <Compile Include="Utility\ConcurrentHashSet.cs" />
+    <Compile Include="Utility\DataStructures\IPipelinedConsumer.cs" />
+    <Compile Include="Utility\DataStructures\IPipelinedProvider.cs" />
+    <Compile Include="Utility\DataStructures\IPipelineStage.cs" />
+    <Compile Include="Utility\DataStructures\PipelineBuilder.cs" />
+    <Compile Include="Utility\IPooled.cs" />
+    <Compile Include="Utility\Pool.cs" />
+    <Compile Include="Utility\Pooled.cs" />
+    <Compile Include="Utility\PooledTexture.cs" />
+    <Compile Include="Utility\StatCounter.cs" />
+    <Compile Include="Utility\TexturePoolBase.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\Portable\$(TargetFrameworkVersion)\Microsoft.Portable.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
