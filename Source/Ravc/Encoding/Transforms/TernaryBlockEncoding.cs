@@ -306,7 +306,7 @@ namespace Ravc.Encoding.Transforms
             return (int)(destination - destinationStart);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void UpdateZeroBlockPrediction5(ApplicationContext* context)
         {
             var blockStart = (byte*)0;
@@ -337,7 +337,7 @@ namespace Ravc.Encoding.Transforms
             context->NextZeroBlock5 = context->Border;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void UpdateZeroBlockPredictions(ApplicationContext* context)
         {
             if (context->NextZeroBlock5 < context->Source)

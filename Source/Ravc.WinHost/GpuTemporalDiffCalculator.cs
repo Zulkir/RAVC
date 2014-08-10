@@ -22,21 +22,20 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Linq;
 using Beholder;
 using Beholder.Core;
 using Beholder.Platform;
 using Beholder.Resources;
 using Beholder.Shaders;
+using System.Linq;
 using Ravc.Utility;
 
 namespace Ravc.WinHost
 {
-    public class GpuChannelSwapper
+    public class GpuTemporalDiffCalculator
     {
         private readonly IComputeShader computeShader;
-        private readonly int rgbaFormat;
-        private readonly int bgraFormat;
+        private readonly int formatId;
 
         const string ComputeShaderText = @"
 %meta
@@ -50,31 +49,37 @@ ThreadCountZ = 1
 int3 ThreadId : SDX10 = SV_DispatchThreadID
 
 %srvs
-Texture2D <float4> Input : slot = 0
+Texture2D <uint4> CurrentFrameTex : slot = 0
+Texture2D <uint4> ParentFrameTex : slot = 1
 
 %uavs
-RWTexture2D <float4> Output : slot = 0
+RWTexture2D <uint4> Output : slot = 0
+
+%code_global
+static int4 White = int4(256, 256, 256, 256);
 
 %code_main
-    Output[INPUT(ThreadId).xy] = Input[INPUT(ThreadId).xy];
+    int2 pixelCoord = INPUT(ThreadId).xy;
+    int4 diff = (White + CurrentFrameTex[pixelCoord] - ParentFrameTex[pixelCoord]) % White;
+    Output[pixelCoord] = diff.bgra;
 ";
 
-        public GpuChannelSwapper(IDevice device)
+        public GpuTemporalDiffCalculator(IDevice device)
         {
             computeShader = device.Create.ComputeShader(ShaderParser.Parse(ComputeShaderText));
-            rgbaFormat = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_UNORM).ID;
-            bgraFormat = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.B8G8R8A8_UNORM).ID;
+            formatId = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_UINT).ID;
         }
 
-        public void SwapBgraToRgba(IDeviceContext context, ITexture2D target, ITexture2D texture)
+        public void CalculateDiff(IDeviceContext context, ITexture2D target, ITexture2D texture, ITexture2D parentTexture)
         {
-            var uav = target.ViewAsUnorderedAccessResource(rgbaFormat, 0);
-
+            var uav = target.ViewAsUnorderedAccessResource(formatId, 0);
+            
             context.ShaderForDispatching = computeShader;
-            context.ComputeStage.ShaderResources[0] = texture.ViewAsShaderResource(bgraFormat, 0, 1);
+            context.ComputeStage.ShaderResources[0] = texture.ViewAsShaderResource(formatId, 0, 1);
+            context.ComputeStage.ShaderResources[1] = parentTexture.ViewAsShaderResource(formatId, 0, 1);
             context.ComputeStage.UnorderedAccessResources[0] = uav;
 
-            context.Dispatch(RavcMath.DivideAndCeil(target.Width / 16, 16), RavcMath.DivideAndCeil(target.Width / 16, 16), 1);
-        } 
+            context.Dispatch(RavcMath.DivideAndCeil(target.Width, 16), RavcMath.DivideAndCeil(target.Height, 16), 1);
+        }
     }
 }

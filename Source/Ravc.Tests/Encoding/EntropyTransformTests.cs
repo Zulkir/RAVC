@@ -101,5 +101,11 @@ namespace Ravc.Tests.Encoding
             Assert.That(compressedLength, Is.GreaterThanOrEqualTo(Enumerable.Range(0, length * 2).Reverse().First(x => transformed[x] != 0)));
             Console.WriteLine(compressedLength);
         }
+
+        [Test]
+        public void Asd()
+        {
+            Console.WriteLine(new DateTime(2011, 2, 6) - new DateTime(2011, 1, 27));
+        }
     }
 }

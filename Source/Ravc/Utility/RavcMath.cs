@@ -22,12 +22,14 @@ THE SOFTWARE.
 */
 #endregion
 
-namespace Ravc.Encoding
+namespace Ravc.Utility
 {
-    public static class EncodingConstants
+    public static class RavcMath
     {
-        public const int MipLevels = 5;
-        public const int SmallestMip = MipLevels - 1;
-        public const int DimensionAlignment = 1 << (MipLevels);
+         public static int DivideAndCeil(int x, int divisor)
+         {
+             int floor = x / divisor;
+             return floor * divisor == x ? x : x + 1;
+         }
     }
 }

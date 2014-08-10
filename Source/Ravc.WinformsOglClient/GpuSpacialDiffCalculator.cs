@@ -22,72 +22,60 @@ THE SOFTWARE.
 */
 #endregion
 
+using System;
 using System.Runtime.InteropServices;
 using ObjectGL.Api;
 using ObjectGL.Api.Objects;
 using ObjectGL.Api.Objects.Resources;
 using OpenTK;
-using BeginMode = ObjectGL.Api.BeginMode;
-using BufferTarget = ObjectGL.Api.Objects.Resources.BufferTarget;
-using BufferUsageHint = ObjectGL.Api.Objects.Resources.BufferUsageHint;
-using DrawElementsType = ObjectGL.Api.DrawElementsType;
-using TextureMagFilter = ObjectGL.Api.Objects.TextureMagFilter;
-using TextureMinFilter = ObjectGL.Api.Objects.TextureMinFilter;
-using TextureWrapMode = ObjectGL.Api.Objects.TextureWrapMode;
-using VertexAttribPointerType = ObjectGL.Api.Objects.VertexAttribPointerType;
+using Ravc.Encoding;
 
 namespace Ravc.WinformsOglClient
 {
-    public class GpuSideDecoder
+    public class GpuSpacialDiffCalculator
     {
         [StructLayout(LayoutKind.Sequential)]
         private struct Vertex
         {
-            public Vector4 Position;
-            public Vector4 TexCoord;
+            public Vector2 Position;
 
-            public Vertex(float px, float py, float tx, float ty)
+            public Vertex(float px, float py)
             {
                 Position.X = px;
                 Position.Y = py;
-                Position.Z = 0f;
-                Position.W = 0f;
-
-                TexCoord.X = tx;
-                TexCoord.Y = ty;
-                TexCoord.Z = 0f;
-                TexCoord.W = 0f;
             }
 
-            public const int Size = 2 * 4 * sizeof(float);
+            public const int Size = 2 * sizeof(float);
         }
 
         private readonly IShaderProgram program;
         private readonly IVertexArray vertexArray;
         private readonly IFramebuffer framebuffer;
-        private readonly ISampler sampler;
+        private readonly IBuffer stepInfoBuffer;
+        private readonly ISampler avgDiffsampler;
+        private readonly ISampler localDiffsampler;
 
         private const string VertexShaderText =
 @"#version 150
 
-in vec4 in_position;
-in vec4 in_tex_coord;
-
-out vec2 v_tex_coord;
+in vec2 in_position;
 
 void main()
 {
     gl_Position = vec4(in_position.x, -in_position.y, 0.0f, 1.0f);
-    v_tex_coord = in_tex_coord.xy;
 }
 ";
 
         private const string FragmentShaderText =
 @"#version 150
-uniform sampler2D DiffuseTexture;
-uniform sampler2D ParentTexture;
 
-in vec2 v_tex_coord;
+layout(std140) uniform StepInfoBuffer
+{
+    int MipLevel;
+};
+
+uniform sampler2D AverageDiffTexture;
+uniform sampler2D LocalDiffTexture;
 
 out vec4 out_color;
 
@@ -114,29 +102,20 @@ uvec4 EncodeDiff(ivec4 v)
     return uvec4((v + White) % White);
 }
 
-vec3 AddWithOverflow(vec3 v1, vec3 v2)
-{
-    ivec3 i1 = ivec3(v1 * 255.999);
-    ivec3 i2 = ivec3(v2 * 255.999);
-
-    ivec3 iResult = (i1 + i2) % ivec3(256, 256, 256);
-    return vec3(iResult) / 255;
-}
-
 void main()
 {
-    vec3 diff = texture(DiffuseTexture, v_tex_coord).xyz;
-    vec3 prev = texture(ParentTexture, v_tex_coord).xyz;
-    vec3 result = AddWithOverflow(diff, prev);
-    out_color = vec4(result, 1.0);
-    //out_color = vec4(diff, 1.0);
-    //vec4 val = vec4(DecodeDiff(ToUint(vec4(diff, 1.0)))) / 255;
-    //out_color = abs(val) * 16;
-    //out_color = vec4(1.0, 0.0, 0.0, 1.0);
+    ivec2 intCoord = ivec2(gl_FragCoord.xy);
+    ivec4 avgDiff   = DecodeDiff(ToUint(texelFetch(AverageDiffTexture, intCoord / 2, MipLevel + 1)));
+    ivec4 localDiff = DecodeDiff(ToUint(texelFetch(LocalDiffTexture, intCoord, MipLevel)));
+
+    out_color = ToFloat(EncodeDiff(avgDiff + localDiff));
+
+    //out_color = ToFloat(EncodeDiff(localDiff));
+    //out_color = vec4(1, 0, 0, 1);
 }
 ";
 
-        public GpuSideDecoder(IContext context)
+        public GpuSpacialDiffCalculator(IContext context)
         {
             var vertexShader = context.Create.VertexShader(VertexShaderText);
             var fragmentShader = context.Create.FragmentShader(FragmentShaderText);
@@ -144,16 +123,17 @@ void main()
             {
                 VertexShaders = new[] { vertexShader },
                 FragmentShaders = new[] { fragmentShader },
-                VertexAttributeNames = new[] { "in_position", "in_tex_coord" },
-                SamplerNames = new[] { "DiffuseTexture", "ParentTexture" }
+                VertexAttributeNames = new[] { "in_position" },
+                UniformBufferNames = new[] { "StepInfoBuffer" },
+                SamplerNames = new[] { "AverageDiffTexture", "LocalDiffTexture" }
             });
 
             var vertexBuffer = context.Create.Buffer(BufferTarget.ArrayBuffer, 4 * Vertex.Size, BufferUsageHint.StaticDraw, new[]
             {
-                new Vertex(-1f, 1f, 0f, 0f),
-                new Vertex(1f, 1f, 1f, 0f),
-                new Vertex(1f, -1f, 1f, 1f),
-                new Vertex(-1f, -1f, 0f, 1f)
+                new Vertex(-1f, 1f),
+                new Vertex(1f, 1f),
+                new Vertex(1f, -1f),
+                new Vertex(-1f, -1f)
             });
 
             var elementArrayBuffer = context.Create.Buffer(BufferTarget.ElementArrayBuffer, 6 * sizeof(ushort), BufferUsageHint.StaticDraw, new ushort[]
@@ -163,46 +143,66 @@ void main()
 
             vertexArray = context.Create.VertexArray();
             vertexArray.SetVertexAttributeF(0, vertexBuffer, VertexAttributeDimension.Two, VertexAttribPointerType.Float, false, Vertex.Size, 0);
-            vertexArray.SetVertexAttributeF(1, vertexBuffer, VertexAttributeDimension.Two, VertexAttribPointerType.Float, false, Vertex.Size, 4 * sizeof(float));
+            //vertexArray.SetVertexAttributeF(1, vertexBuffer, VertexAttributeDimension.Two, VertexAttribPointerType.Float, false, Vertex.Size, 4 * sizeof(float));
             vertexArray.SetElementArrayBuffer(elementArrayBuffer);
 
             framebuffer = context.Create.Framebuffer();
 
-            sampler = context.Create.Sampler();
-            sampler.SetMinFilter(TextureMinFilter.Nearest);
-            sampler.SetMagFilter(TextureMagFilter.Nearest);
-            sampler.SetWrapR(TextureWrapMode.Clamp);
-            sampler.SetWrapS(TextureWrapMode.Clamp);
-            sampler.SetWrapT(TextureWrapMode.Clamp);
+            stepInfoBuffer = context.Create.Buffer(BufferTarget.UniformBuffer, 16, BufferUsageHint.StaticDraw);
+
+            avgDiffsampler = context.Create.Sampler();
+            localDiffsampler = context.Create.Sampler();
         }
 
-        public void Decode(IContext context, ITexture2D target, ITexture2D texture, ITexture2D parentTexture, int width, int height)
+        public unsafe void ApplyDiff(IContext context, ITexture2D target, ITexture2D spacialDiffTexture, ITexture2D workingTexture)
         {
             var pipeline = context.Pipeline;
 
             pipeline.Program = program;
             pipeline.VertexArray = vertexArray;
             
-            pipeline.Viewports[0].Set(width, height);
             pipeline.Rasterizer.SetDefault();
             pipeline.Rasterizer.MultisampleEnable = false;
 
-            framebuffer.AttachTextureImage(FramebufferAttachmentPoint.Color0, target, 0);
             pipeline.Framebuffer = framebuffer;
+
+            pipeline.UniformBuffers[0] = stepInfoBuffer;
             
-            pipeline.Textures[0] = texture;
-            pipeline.Samplers[0] = sampler;
-            pipeline.Textures[1] = parentTexture;
-            pipeline.Samplers[1] = sampler;
+            pipeline.Samplers[0] = avgDiffsampler;
+            pipeline.Textures[1] = spacialDiffTexture;
+            pipeline.Samplers[1] = localDiffsampler;
 
             pipeline.DepthStencil.SetDefault();
             pipeline.DepthStencil.DepthMask = false;
 
             pipeline.Blend.SetDefault(false);
 
-            //framebuffer.ClearColor(0, new Color4(0, 1, 0, 1));
-            context.DrawElements(BeginMode.Triangles, 6, DrawElementsType.UnsignedShort, 0);
+            if (EncodingConstants.MipLevels % 2 == 0)
+                Swap(ref target, ref workingTexture);
+
+            for (int i = EncodingConstants.SmallestMip; i >= 0; i--)
+            {
+                Vector4 stepInfoBufferData;
+                *(int*)&stepInfoBufferData = i;
+                stepInfoBuffer.SetDataByMapping((IntPtr)(&stepInfoBufferData));
+            
+                framebuffer.AttachTextureImage(FramebufferAttachmentPoint.Color0, target, i);
+                pipeline.Viewports[0].Set(spacialDiffTexture.Width >> i, spacialDiffTexture.Height >> i);
+                pipeline.Textures[0] = workingTexture;
+            
+                context.DrawElements(BeginMode.Triangles, 6, DrawElementsType.UnsignedShort, 0);
+            
+                Swap(ref target, ref workingTexture);
+            }
+
             framebuffer.DetachColorStartingFrom(0);
+        }
+
+        private static void Swap<T>(ref T a, ref T b)
+        {
+            var t = a;
+            a = b;
+            b = t;
         }
     }
 }

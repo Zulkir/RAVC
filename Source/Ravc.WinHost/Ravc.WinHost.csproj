@@ -67,12 +67,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BroadcastStage.cs" />
+    <Compile Include="GpuDiffMipGenerator.cs" />
+    <Compile Include="GpuSpacialDiffCalculator.cs" />
     <Compile Include="CpuCompressionStage.cs" />
     <Compile Include="DebugStage.cs" />
     <Compile Include="FileLogger.cs" />
     <Compile Include="FileStreamBroadcaster.cs" />
     <Compile Include="GpuChannelSwapper.cs" />
-    <Compile Include="GpuDiffCalculator.cs" />
+    <Compile Include="GpuTemporalDiffCalculator.cs" />
     <Compile Include="GpuEncodedFrame.cs" />
     <Compile Include="GpuProcessingStage.cs" />
     <Compile Include="GpuRawFrame.cs" />

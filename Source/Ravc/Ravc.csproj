@@ -69,6 +69,7 @@
     <Compile Include="Utility\Pool.cs" />
     <Compile Include="Utility\Pooled.cs" />
     <Compile Include="Utility\PooledTexture.cs" />
+    <Compile Include="Utility\RavcMath.cs" />
     <Compile Include="Utility\StatCounter.cs" />
     <Compile Include="Utility\TexturePoolBase.cs" />
   </ItemGroup>

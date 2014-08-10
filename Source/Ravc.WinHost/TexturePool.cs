@@ -25,7 +25,7 @@ THE SOFTWARE.
 using Beholder;
 using Beholder.Platform;
 using Beholder.Resources;
-using Beholder.Utility.Helpers;
+using Ravc.Encoding;
 using Ravc.Infrastructure;
 using Ravc.Utility;
 
@@ -60,7 +60,7 @@ namespace Ravc.WinHost
                 Width = width,
                 Height = height,
                 ArraySize = 1,
-                MipLevels = miscFlags.HasFlag(MiscFlags.GenerateMips) ? TextureHelper.MipLevels(width, height, 1) : 1,
+                MipLevels = miscFlags.HasFlag(MiscFlags.GenerateMips) ? EncodingConstants.MipLevels : 1,
                 FormatID = formatId,
                 Sampling = Sampling.NoMultisampling,
                 Usage = usage,

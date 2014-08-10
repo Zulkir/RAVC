@@ -62,8 +62,36 @@ Texture2D <float4> DiffuseTexture : slot = 0, slotGL3 = 0
 %fixed_sampling
 DiffuseTexture : TextureMapSampler
 
+%code_global
+static float3 One = float3(1.0, 1.0, 1.0);
+static float3 Half = float3(0.5, 0.5, 0.5);
+
 %code_main
-    float3 val = sample(DiffuseTexture, INPUT(TexCoord)).xyz;
+    float3 val = sample(DiffuseTexture, INPUT(TexCoord)).bgr;
+    val = ((val + Half) % One) - Half;
+    val = abs(val);
+
+    float norm = max(val.x, max(val.y, val.z));
+
+    //if (norm < 2.5 / 256)
+    //    val = float3(0, 0, 0);
+    
+    //if (val.g > 0.0 || val.b > 0.0)
+    //    val = float3(0, 0, 0);
+
+    //if (norm < 0.5 / 256)
+    //    val = float3(0, 0, 0);
+    //else if (norm < 1.5 / 256)
+    //    val = float3(0, 0, 0);
+    //else if (norm < 2.5 / 256)
+    //    val = float3(0, 0, 0);
+    //else if (norm < 7.5 / 256)
+    //    val = float3(1, 0, 0);
+    //else
+    //    val = float3(1, 1, 1);
+
+    val = val * 8;
+        
     OUTPUT(Color) = float4(val, 1.0);
 ";
 

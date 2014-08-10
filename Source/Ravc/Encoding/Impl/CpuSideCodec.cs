@@ -35,8 +35,8 @@ namespace Ravc.Encoding.Impl
         [StructLayout(LayoutKind.Sequential)]
         private struct CompressedFrameInfo
         {
-            public int Width;
-            public int Height;
+            public int OriginalWidth;
+            public int OriginalHeight;
             public FrameType Type;
             public float Timestamp;
 
@@ -51,7 +51,7 @@ namespace Ravc.Encoding.Impl
             public int UncompressedSize;
         }
 
-        private const int PartCount = 60;
+        private const int PartCount = 24;
         private const int LastPartIndex = PartCount - 1;
         private const int PartOffsetsTableSize = PartCount * sizeof(int);
         private const int HeaderSize = CompressedFrameInfo.Size + PartOffsetsTableSize;
@@ -100,7 +100,7 @@ namespace Ravc.Encoding.Impl
         #region Compression
         public CompressedFrame Compress(UncompressedFrame frame)
         {
-            int auxiliaryBufferSize = frame.Info.AlignedHeight * CalculateAuxiliaryRowSize(frame.Info.AlignedWidth);
+            int auxiliaryBufferSize = frame.Info.UncompressedSize * 3 / 2;
             int resultBufferSize = HeaderSize + auxiliaryBufferSize;
 
             var resultBuffer = byteArrayPool.Extract(resultBufferSize);
@@ -118,7 +118,7 @@ namespace Ravc.Encoding.Impl
                 var lutLocal = lut;
                 WriteFrameInfo(frame, result);
                 var partInfos = partInfoBuffer.Item;
-                FillPartInfosForCompression(partInfos, frame, source, auxiliary, result);
+                FillPartInfosForCompression(partInfos, frame.Info, source, auxiliary, result);
                 var compressedPartSizesTable = (int*)partSizes;
                 //for (int i = 0; i < PartCount; i++)
                 Parallel.For(0, PartCount, i =>
@@ -138,35 +138,25 @@ namespace Ravc.Encoding.Impl
         private static void WriteFrameInfo(UncompressedFrame frame, byte* result)
         {
             var frameInfo = (CompressedFrameInfo*)result;
-            frameInfo->Width = frame.Info.AlignedWidth;
-            frameInfo->Height = frame.Info.AlignedHeight;
+            frameInfo->OriginalWidth = frame.Info.OriginalWidth;
+            frameInfo->OriginalHeight = frame.Info.OriginalHeight;
             frameInfo->Type = frame.Info.Type;
             frameInfo->Timestamp = frame.Info.Timestamp;
         }
 
-        private static void FillPartInfosForCompression(PartInfo[] partInfos, UncompressedFrame frame, byte* source, byte* auxiliary, byte* result)
+        private static void FillPartInfosForCompression(PartInfo[] partInfos, FrameInfo frameInfo, byte* source, byte* auxiliary, byte* result)
         {
+            int typicalPartSizeInPixels = frameInfo.UncompressedSize / 4 / PartCount;
+
             for (int i = 0; i < PartCount; i++)
-                partInfos[i] = BuildPartInfoForCompression(i, frame.Info.AlignedWidth, frame.Info.AlignedHeight, source, auxiliary, result);
-        }
-
-        private static PartInfo BuildPartInfoForCompression(int index, int width, int height, byte* source, byte* auxiliary, byte* result)
-        {
-            int typicalRowCount = height / PartCount;
-            int firstRow = index * typicalRowCount;
-            int rowCount = index != LastPartIndex ? typicalRowCount : height - firstRow;
-
-            int uncompressedRowSize = width * 4;
-            int uncompressedOffset = firstRow * uncompressedRowSize;
-            int workingOffset = firstRow * width * 6;
-
-            return new PartInfo
-            {
-                Source = source + uncompressedOffset,
-                Auxiliary = auxiliary + workingOffset,
-                Result = result + HeaderSize + workingOffset,
-                UncompressedSize = uncompressedRowSize * rowCount
-            };
+                partInfos[i] = new PartInfo
+                {
+                    Source = source + i * typicalPartSizeInPixels * 4,
+                    Auxiliary = auxiliary + i * typicalPartSizeInPixels * 6,
+                    Result = result + HeaderSize + i * typicalPartSizeInPixels * 6,
+                    UncompressedSize = typicalPartSizeInPixels * 4
+                };
+            partInfos[LastPartIndex].UncompressedSize = frameInfo.UncompressedSize - (PartCount - 1) * typicalPartSizeInPixels * 4;
         }
 
         private static void CompressPart(int i, PartInfo[] partInfos, byte* lut, int* partSizesTable)
@@ -175,7 +165,7 @@ namespace Ravc.Encoding.Impl
             int sizeInPixels = part.UncompressedSize / 4;
             SeparateChannelsTransform.Apply(part.Result, part.Source, sizeInPixels);
             int separatedSize = sizeInPixels * 3;
-            DeltaCoding.Apply(part.Result, separatedSize);
+            //DeltaCoding.Apply(part.Result, separatedSize);
             partSizesTable[i] = TernaryBlockEncoding.Apply(part.Auxiliary, part.Result, lut, separatedSize);
             
             //cpblk((IntPtr)part.Auxiliary, (IntPtr)part.Source, part.UncompressedSize);
@@ -208,19 +198,18 @@ namespace Ravc.Encoding.Impl
         #region Decompression
         public UncompressedFrame Decompress(CompressedFrame compressedFrame)
         {
-            CompressedFrameInfo compressedFrameInfo;
+            FrameInfo frameInfo;
             IPooled<byte[]> resultBuffer;
 
             fixed (byte* source = compressedFrame.DataPooled.Item)
             {
-                compressedFrameInfo = *(CompressedFrameInfo*)source;
-                int uncompressedFrameSize = compressedFrameInfo.Height * compressedFrameInfo.Width * 4;
-                int auxiliaryBufferSize = compressedFrameInfo.Height * CalculateAuxiliaryRowSize(compressedFrameInfo.Width);
+                var compressedFrameInfo = *(CompressedFrameInfo*)source;
+                frameInfo = new FrameInfo(compressedFrameInfo.Type, compressedFrameInfo.Timestamp, compressedFrameInfo.OriginalWidth, compressedFrameInfo.OriginalHeight);
 
-                resultBuffer = byteArrayPool.Extract(uncompressedFrameSize);
+                resultBuffer = byteArrayPool.Extract(frameInfo.UncompressedSize);
 
                 var partInfoBuffer = partInfoArrayPool.Extract();
-                var auxiliaryBuffer = byteArrayPool.Extract(auxiliaryBufferSize);
+                var auxiliaryBuffer = byteArrayPool.Extract(frameInfo.UncompressedSize);
                 fixed (byte* auxiliary = auxiliaryBuffer.Item)
                 fixed (byte* lut = blockEncodingReadLut)
                 fixed (byte* result = resultBuffer.Item)
@@ -228,7 +217,7 @@ namespace Ravc.Encoding.Impl
                     var lutLocal = lut;
                     var partInfos = partInfoBuffer.Item;
                     var partOffsetsTable = (int*)(source + CompressedFrameInfo.Size);
-                    FillPartInfosForDecompression(partInfos, compressedFrameInfo, source, auxiliary, result, partOffsetsTable);
+                    FillPartInfosForDecompression(partInfos, frameInfo, source, auxiliary, result, partOffsetsTable);
                     //for (int i = 0; i < PartCount; i++)
                     Parallel.For(0, PartCount, i => 
                         DecompressPart(i, partInfos, lutLocal));
@@ -237,32 +226,23 @@ namespace Ravc.Encoding.Impl
                 partInfoBuffer.Release();
             }
 
-            var frameInfo = new FrameInfo(compressedFrameInfo.Type, compressedFrameInfo.Timestamp, compressedFrameInfo.Width, compressedFrameInfo.Height);
             return new UncompressedFrame(frameInfo, resultBuffer);
         }
 
-        private static void FillPartInfosForDecompression(PartInfo[] partInfos, CompressedFrameInfo compressedFrameInfo, byte* source, byte* auxiliary, byte* result, int* partOffsetsTable)
+        private static void FillPartInfosForDecompression(PartInfo[] partInfos, FrameInfo frameInfo, byte* source, byte* auxiliary, byte* result, int* partOffsetsTable)
         {
+            int typicalPartSizeInPixels = frameInfo.UncompressedSize / 4 / PartCount;
+            int typicalSizeInBytes = typicalPartSizeInPixels * 4;
+
             for (int i = 0; i < PartCount; i++)
-                partInfos[i] = BuildPartInfoForDecompression(i, compressedFrameInfo.Width, compressedFrameInfo.Height, source, auxiliary, result, partOffsetsTable);
-        }
-
-        private static PartInfo BuildPartInfoForDecompression(int index, int width, int height, byte* source, byte* auxuiliary, byte* result, int* partOffsetsTable)
-        {
-            int typicalRowCount = height / PartCount;
-            int firstRow = index * typicalRowCount;
-            int rowCount = index != LastPartIndex ? typicalRowCount : height - firstRow;
-            int sizeofRow = width * 4;
-
-            int uncompressedOffset = firstRow * sizeofRow;
-
-            return new PartInfo
-            {
-                Source = source + HeaderSize + partOffsetsTable[index],
-                Auxiliary = auxuiliary + uncompressedOffset,
-                Result = result + uncompressedOffset,
-                UncompressedSize = sizeofRow * rowCount
-            };
+                partInfos[i] = new PartInfo
+                {
+                    Source = source + HeaderSize + partOffsetsTable[i],
+                    Auxiliary = auxiliary + i * typicalSizeInBytes,
+                    Result = result + i * typicalSizeInBytes,
+                    UncompressedSize = typicalSizeInBytes
+                };
+            partInfos[LastPartIndex].UncompressedSize = frameInfo.UncompressedSize - (PartCount - 1) * typicalSizeInBytes;
         }
 
         private static void DecompressPart(int index, PartInfo[] partInfos, byte* lut)
@@ -271,7 +251,7 @@ namespace Ravc.Encoding.Impl
             int sizeInPixels = part.UncompressedSize / 4;
             int separatedSize = sizeInPixels * 3;
             TernaryBlockEncoding.Revert(part.Auxiliary, part.Source, lut, separatedSize);
-            DeltaCoding.Revert(part.Auxiliary, separatedSize);
+            //DeltaCoding.Revert(part.Auxiliary, separatedSize);
             SeparateChannelsTransform.Revert(part.Result, part.Auxiliary, sizeInPixels);
 
             //cpblk((IntPtr)part.Result, (IntPtr)part.Source, part.UncompressedSize);

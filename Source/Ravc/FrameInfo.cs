@@ -35,6 +35,7 @@ namespace Ravc
 
         public int AlignedWidth { get; private set; }
         public int AlignedHeight { get; private set; }
+        public int UncompressedSize { get; private set; }
 
         public FrameInfo(FrameType type, float timestamp, int width, int height)
         {
@@ -45,12 +46,21 @@ namespace Ravc
 
             AlignedWidth = AlignDimension(width);
             AlignedHeight = AlignDimension(height);
+            UncompressedSize = CalculateUncompressedSize(AlignedWidth, AlignedHeight);
         }
 
-        private static int AlignDimension(int dimension)
+        private static int AlignDimension(int x)
         {
-            int mod = dimension % EncodingConstants.DimensionAlignment;
-            return mod == 0 ? dimension : dimension + EncodingConstants.DimensionAlignment - mod;
+            int mod = x % EncodingConstants.DimensionAlignment;
+            return mod == 0 ? x : x + EncodingConstants.DimensionAlignment - mod;
+        }
+
+        private static int CalculateUncompressedSize(int alignedWidth, int alignedHeight)
+        {
+            int smallestMipWidth = alignedWidth >> EncodingConstants.SmallestMip;
+            int smallestMipHeight = alignedHeight >> EncodingConstants.SmallestMip;
+            const int sizeInSmallestMips = ((1 << (2 * EncodingConstants.MipLevels)) - 1) / (4 - 1);
+            return (smallestMipWidth * smallestMipHeight * 4) * sizeInSmallestMips;
         }
     }
 }

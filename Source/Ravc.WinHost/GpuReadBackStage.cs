@@ -41,6 +41,8 @@ namespace Ravc.WinHost
         {
             public FrameInfo Info;
             public ITexture2D StagingTex;
+
+            public bool HasTexture { get { return StagingTex != null; } }
         }
 
         private readonly IDevice device;
@@ -69,32 +71,12 @@ namespace Ravc.WinHost
                 stagingFrame.StagingTex.Dispose();
         }
 
-        public unsafe void Consume(GpuEncodedFrame input)
+        public void Consume(GpuEncodedFrame input)
         {
             var context = device.ImmediateContext;
 
-            var frontStagingFrame = stagingTexChain[frontIndex];
-            var frontTex = frontStagingFrame.StagingTex;
-            if (frontTex != null)
-            {
-                int frontWidth = frontTex.Width;
-                int frontHeight = frontTex.Height;
-                var dataRowSize = frontWidth * 4;
-                var dataPooled = byteArrayPool.Extract(frontHeight * dataRowSize);
-
-                var mapInfo = context.Map(frontTex, 0, MapType.Read, MapFlags.None);
-                fixed (byte* pData = dataPooled.Item)
-                {
-                    var pDataLocal = pData;
-                    int rowSizeToCopy = Math.Min(dataRowSize, mapInfo.RowPitch);
-                    Parallel.For(0, frontHeight, i =>
-                        Memory.CopyBulk(pDataLocal + i * dataRowSize, (byte*)mapInfo.Data + i * mapInfo.RowPitch, rowSizeToCopy));
-                }
-                context.Unmap(frontTex, 0);
-
-                var uncompressedFrame = new UncompressedFrame(frontStagingFrame.Info, dataPooled);
-                nextStage.Consume(uncompressedFrame);
-            }
+            if (stagingTexChain[frontIndex].HasTexture)
+                PushToNextStage(stagingTexChain[frontIndex]);
 
             var diffPooled = input.DiffPooled;
             var diffTex = input.DiffPooled.Item;
@@ -110,7 +92,7 @@ namespace Ravc.WinHost
                     Width = input.Info.AlignedWidth,
                     Height = input.Info.AlignedHeight,
                     ArraySize = 1,
-                    MipLevels = 1,
+                    MipLevels = EncodingConstants.MipLevels,
                     Sampling = Sampling.NoMultisampling,
                     FormatID = formatId,
                     Usage = Usage.Staging,
@@ -119,12 +101,49 @@ namespace Ravc.WinHost
             }
             stagingTexChain[backIndex].Info = input.Info;
 
-            context.CopySubresourceRegion(backTex, 0, 0, 0, 0, diffTex, 0, null);
+            context.CopyResource(backTex, diffTex);
 
             diffPooled.Release();
 
             backIndex = frontIndex;
             frontIndex = (frontIndex + 1) % stagingTexChain.Length;
+        }
+
+        private unsafe void PushToNextStage(StagingFrame frontStagingFrame)
+        {
+            var context = device.ImmediateContext;
+
+            var frontTex = frontStagingFrame.StagingTex;
+            var dataPooled = byteArrayPool.Extract(frontStagingFrame.Info.UncompressedSize);
+
+            fixed (byte* pData = dataPooled.Item)
+            {
+                var pDataMip = pData;
+                int width = frontStagingFrame.Info.AlignedWidth;
+                int height = frontStagingFrame.Info.AlignedHeight;
+
+                for (int i = 0; i < EncodingConstants.MipLevels; i++)
+                {
+                    var pDataMipLocal = pDataMip;
+                    var dataRowSize = width * 4;
+
+                    var mapInfo = context.Map(frontTex, i, MapType.Read, MapFlags.None);
+                    {
+                        int rowSizeToCopy = Math.Min(dataRowSize, mapInfo.RowPitch);
+                        //for (int r = 0; r < height; r++)
+                        Parallel.For(0, height, r =>
+                            Memory.CopyBulk(pDataMipLocal + r * dataRowSize, (byte*)mapInfo.Data + r * mapInfo.RowPitch, rowSizeToCopy));
+                    }
+                    context.Unmap(frontTex, i);
+
+                    pDataMip += height * dataRowSize;
+                    width /= 2;
+                    height /= 2;
+                }
+            }
+
+            var uncompressedFrame = new UncompressedFrame(frontStagingFrame.Info, dataPooled);
+            nextStage.Consume(uncompressedFrame);
         }
     }
 }

@@ -69,13 +69,16 @@ namespace Ravc.Tests.Encoding
             return (uint)random.Next(int.MinValue, int.MaxValue) & 0x00FFFFFF;
         }
 
-        private unsafe void DoTest(int width, int height, uint[] pixels)
+        private unsafe void DoTest(int width, int height, Func<int, uint> getPixel)
         {
-            var frame = new UncompressedFrame(new FrameInfo(FrameType.Relative, 123456.789f, width, height), byteArrayPool.Extract(width * height * 4));
+            var frameInfo = new FrameInfo(FrameType.Relative, 123456.789f, width, height);
+            var uncompressedSizeInPixels = frameInfo.UncompressedSize / 4;
+            var pixels = Enumerable.Range(0, uncompressedSizeInPixels).Select(getPixel).ToArray();
+            var frame = new UncompressedFrame(frameInfo, byteArrayPool.Extract(uncompressedSizeInPixels * 4));
             fixed (byte* frameData = frame.DataPooled.Item)
             {
                 var frameDataUint = (uint*)frameData;
-                for (int i = 0; i < width * height; i++)
+                for (int i = 0; i < uncompressedSizeInPixels; i++)
                     frameDataUint[i] = pixels[i];
             }
             var compressedFrame = codec.Compress(frame);
@@ -86,11 +89,11 @@ namespace Ravc.Tests.Encoding
             Assert.That(decompressedFrame.Info.Timestamp, Is.EqualTo(frame.Info.Timestamp));
 
 
-            var resultPixels = new uint[width * height];
+            var resultPixels = new uint[uncompressedSizeInPixels];
             fixed (byte* resultData = decompressedFrame.DataPooled.Item)
             {
                 var resultDataUint = (uint*)resultData;
-                for (int i = 0; i < width * height; i++)
+                for (int i = 0; i < uncompressedSizeInPixels; i++)
                     resultPixels[i] = resultDataUint[i] & 0x00FFFFFF;
             }
 
@@ -104,7 +107,7 @@ namespace Ravc.Tests.Encoding
         [TestCase(1920, 1080)]
         public void TestZeroData(int width, int height)
         {
-            DoTest(width, height, Enumerable.Range(0, width * height).Select(x => (uint)0).ToArray());
+            DoTest(width, height, x => (uint)0);
         }
 
         [TestCase(1, 1)]
@@ -114,7 +117,7 @@ namespace Ravc.Tests.Encoding
         [TestCase(1920, 1080)]
         public void TestConstantData(int width, int height)
         {
-            DoTest(width, height, Enumerable.Range(0, width * height).Select(x => (uint)0x007F7F7F).ToArray());
+            DoTest(width, height, x => (uint)0x007F7F7F);
         }
 
         [TestCase(1, 1)]
@@ -124,7 +127,7 @@ namespace Ravc.Tests.Encoding
         [TestCase(1920, 1080)]
         public void TestSequentialData(int width, int height)
         {
-            DoTest(width, height, Enumerable.Range(0, width * height).Select(x => (uint)x).ToArray());
+            DoTest(width, height, x => (uint)x);
         }
 
         [TestCase(1, 1)]
@@ -134,7 +137,7 @@ namespace Ravc.Tests.Encoding
         [TestCase(1920, 1080)]
         public void TestRandomData(int width, int height)
         {
-            DoTest(width, height, Enumerable.Range(0, width * height).Select(x => GetRandomPixel()).ToArray());
+            DoTest(width, height, x => GetRandomPixel());
         }
     }
 }

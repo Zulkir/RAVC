@@ -22,21 +22,21 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Linq;
 using Beholder;
 using Beholder.Core;
 using Beholder.Platform;
 using Beholder.Resources;
 using Beholder.Shaders;
+using System.Linq;
+using Ravc.Encoding;
 using Ravc.Utility;
 
 namespace Ravc.WinHost
 {
-    public class GpuChannelSwapper
+    public class GpuSpacialDiffCalculator
     {
         private readonly IComputeShader computeShader;
-        private readonly int rgbaFormat;
-        private readonly int bgraFormat;
+        private readonly int formatId;
 
         const string ComputeShaderText = @"
 %meta
@@ -50,31 +50,41 @@ ThreadCountZ = 1
 int3 ThreadId : SDX10 = SV_DispatchThreadID
 
 %srvs
-Texture2D <float4> Input : slot = 0
+Texture2D <uint4> Source : slot = 0
 
 %uavs
-RWTexture2D <float4> Output : slot = 0
+RWTexture2D <uint4> Output : slot = 0
+
+%code_global
+static int4 White = int4(256, 256, 256, 256);
+static int2 Two = int2(2, 2);
 
 %code_main
-    Output[INPUT(ThreadId).xy] = Input[INPUT(ThreadId).xy];
+    int2 pixelCoord = INPUT(ThreadId).xy;
+    int4 diff = (White + Source[pixelCoord] - Source.mips[1][pixelCoord / Two]) % White;
+    Output[pixelCoord] = diff;
 ";
 
-        public GpuChannelSwapper(IDevice device)
+        public GpuSpacialDiffCalculator(IDevice device)
         {
             computeShader = device.Create.ComputeShader(ShaderParser.Parse(ComputeShaderText));
-            rgbaFormat = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_UNORM).ID;
-            bgraFormat = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.B8G8R8A8_UNORM).ID;
+            formatId = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_UINT).ID;
         }
 
-        public void SwapBgraToRgba(IDeviceContext context, ITexture2D target, ITexture2D texture)
+        public void CalculateDiff(IDeviceContext context, ITexture2D target, ITexture2D source)
         {
-            var uav = target.ViewAsUnorderedAccessResource(rgbaFormat, 0);
+            context.CopySubresourceRegion(target, EncodingConstants.SmallestMip, 0, 0, 0, source, EncodingConstants.SmallestMip, null);
 
-            context.ShaderForDispatching = computeShader;
-            context.ComputeStage.ShaderResources[0] = texture.ViewAsShaderResource(bgraFormat, 0, 1);
-            context.ComputeStage.UnorderedAccessResources[0] = uav;
+            for (int i = EncodingConstants.SmallestMip - 1; i >= 0; i--)
+            {
+                var srv = source.ViewAsShaderResource(formatId, i, 2);
+                var uav = target.ViewAsUnorderedAccessResource(formatId, i);
 
-            context.Dispatch(RavcMath.DivideAndCeil(target.Width / 16, 16), RavcMath.DivideAndCeil(target.Width / 16, 16), 1);
-        } 
+                context.ShaderForDispatching = computeShader;
+                context.ComputeStage.ShaderResources[0] = srv;
+                context.ComputeStage.UnorderedAccessResources[0] = uav;
+                context.Dispatch(RavcMath.DivideAndCeil(target.Width >> i, 16), RavcMath.DivideAndCeil(target.Height >> i, 16), 1);
+            }
+        }
     }
 }

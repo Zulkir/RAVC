@@ -41,6 +41,7 @@ namespace Ravc.WinformsOglClient
 
         private readonly TexturePool texturePool;
         private readonly GpuSideDecoder gpuSideDecoder;
+        private readonly GpuSpacialDiffCalculator gpuSpacialDiffCalculator;
         private readonly ITextureInitializer textureInitializer;
         private readonly ITexture2D blackTex;
         private readonly Stopwatch stopwatch;
@@ -54,7 +55,9 @@ namespace Ravc.WinformsOglClient
         public IPipelinedConsumer<GpuSideFrame> NextStage { set { nextStage = value; } }
         public bool IsOverloaded { get { return nextStage.IsOverloaded; } }
 
-        private ITexture2D entropyTex;
+        private ITexture2D spacialDiffTex;
+        private ITexture2D temporalDiffTex;
+        private ITexture2D workingTex;
 
         public GpuProcessingStage(IClientStatistics statistics, IContext context, ITextureInitializer textureInitializer)
         {
@@ -63,6 +66,7 @@ namespace Ravc.WinformsOglClient
             this.textureInitializer = textureInitializer;
             texturePool = new TexturePool(context, textureInitializer, false);
             gpuSideDecoder = new GpuSideDecoder(context);
+            gpuSpacialDiffCalculator = new GpuSpacialDiffCalculator(context);
 
             blackTex = context.Create.Texture2D(1, 1, 1, Format.Rgba8);
             stopwatch = new Stopwatch();
@@ -76,10 +80,20 @@ namespace Ravc.WinformsOglClient
                 width = inputInfo.AlignedWidth;
                 height = inputInfo.AlignedHeight;
 
-                if (entropyTex != null)
-                    entropyTex.Dispose();
-                entropyTex = context.Create.Texture2D(width, height, 1, Format.Rgba8);
-                textureInitializer.InitializeTexture(entropyTex);
+                if (spacialDiffTex != null)
+                    spacialDiffTex.Dispose();
+                spacialDiffTex = context.Create.Texture2D(width, height, EncodingConstants.MipLevels, Format.Rgba8);
+                textureInitializer.InitializeTexture(spacialDiffTex);
+
+                if (temporalDiffTex != null)
+                    temporalDiffTex.Dispose();
+                temporalDiffTex = context.Create.Texture2D(width, height, EncodingConstants.MipLevels, Format.Rgba8);
+                textureInitializer.InitializeTexture(temporalDiffTex);
+
+                if (workingTex != null)
+                    workingTex.Dispose();
+                workingTex = context.Create.Texture2D(width, height, EncodingConstants.MipLevels, Format.Rgba8);
+                textureInitializer.InitializeTexture(workingTex);
 
                 if (prevTexPooled != null)
                     prevTexPooled.Release();
@@ -87,21 +101,27 @@ namespace Ravc.WinformsOglClient
 
                 if (pixelUnpackBuffer != null)
                     pixelUnpackBuffer.Dispose();
-                pixelUnpackBuffer = context.Create.Buffer(BufferTarget.PixelUnpackBuffer, width * height * 4, BufferUsageHint.StreamDraw);
+                pixelUnpackBuffer = context.Create.Buffer(BufferTarget.PixelUnpackBuffer, input.Info.UncompressedSize, BufferUsageHint.StreamDraw);
             }
 
             stopwatch.Restart();
             pixelUnpackBuffer.SetDataByMapping(input.DataPooled.Item);
-            entropyTex.SetData(0, IntPtr.Zero, FormatColor.Bgra, FormatType.UnsignedByte, pixelUnpackBuffer);
+            int offset = 0;
+            for (int i = 0; i < EncodingConstants.MipLevels; i++)
+            {
+                spacialDiffTex.SetData(i, (IntPtr)offset, FormatColor.Bgra, FormatType.UnsignedByte, pixelUnpackBuffer);
+                offset += (width >> i) * (height >> i) * 4;
+            }
             stopwatch.Stop();
             statistics.OnGpuUpload(stopwatch.Elapsed.Milliseconds);
             
+            gpuSpacialDiffCalculator.ApplyDiff(context, temporalDiffTex, spacialDiffTex, workingTex);
 
             var resultPooled = texturePool.Extract(width, height);
             var resultTex = resultPooled.Item;
             var parentTex = prevTexPooled != null ? prevTexPooled.Item : blackTex;
 
-            gpuSideDecoder.Decode(context, resultTex, entropyTex, parentTex, width, height);
+            gpuSideDecoder.Decode(context, resultTex, temporalDiffTex, parentTex, width, height);
             
             if (prevTexPooled != null)
                 prevTexPooled.Release();

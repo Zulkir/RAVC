@@ -35,7 +35,7 @@ namespace Ravc.WinformsOglClient
         {
             if (data.Length < texture.Width * texture.Height * 4)
                 data = Enumerable.Range(0, texture.Width * texture.Height * 4).Select(x => (byte)255).ToArray();
-
+            
             for (int i = 0; i < texture.MipCount; i++)
                 texture.SetData(0, data, FormatColor.Bgra, FormatType.UnsignedByte);
         }

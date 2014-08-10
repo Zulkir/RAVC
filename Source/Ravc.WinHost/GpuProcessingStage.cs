@@ -36,10 +36,12 @@ namespace Ravc.WinHost
     public class GpuProcessingStage : IPipelineStage<GpuRawFrame, GpuEncodedFrame>, IDisposable
     {
         private readonly IDevice device;
-        private readonly TexturePool entropyTexturePool;
-        private readonly TexturePool copyTexturePool;
-        private readonly GpuDiffCalculator gpuDiffCalculator;
+        private readonly int formatRgbaTypelessId;
+        private readonly TexturePool texturePool;
         private readonly GpuChannelSwapper gpuChannelSwapper;
+        private readonly GpuTemporalDiffCalculator gpuTemporalDiffCalculator;
+        private readonly GpuDiffMipGenerator gpuDiffMipGenerator;
+        private readonly GpuSpacialDiffCalculator gpuSpacialDiffCalculator;
         private readonly ITexture2D blackTex;
         private IPipelinedConsumer<GpuEncodedFrame> nextStage;
         private int width;
@@ -52,12 +54,12 @@ namespace Ravc.WinHost
         public GpuProcessingStage(IDevice device)
         {
             this.device = device;
-            var copyFormatId = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_TYPELESS).ID;
-            var entropyFormatId = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_TYPELESS).ID;
-            copyTexturePool = new TexturePool(device, copyFormatId, Usage.Default, BindFlags.ShaderResource | BindFlags.RenderTarget | BindFlags.UnorderedAccess, MiscFlags.GenerateMips);
-            entropyTexturePool = new TexturePool(device, entropyFormatId, Usage.Default, BindFlags.ShaderResource | BindFlags.RenderTarget | BindFlags.UnorderedAccess, MiscFlags.GenerateMips);
-            gpuDiffCalculator = new GpuDiffCalculator(device);
+            formatRgbaTypelessId = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_TYPELESS).ID;
+            texturePool = new TexturePool(device, formatRgbaTypelessId, Usage.Default, BindFlags.ShaderResource | BindFlags.RenderTarget | BindFlags.UnorderedAccess, MiscFlags.GenerateMips);
             gpuChannelSwapper = new GpuChannelSwapper(device);
+            gpuTemporalDiffCalculator = new GpuTemporalDiffCalculator(device);
+            gpuDiffMipGenerator = new GpuDiffMipGenerator(device);
+            gpuSpacialDiffCalculator = new GpuSpacialDiffCalculator(device);
 
             blackTex = device.Create.Texture2D(new Texture2DDescription
             {
@@ -75,8 +77,7 @@ namespace Ravc.WinHost
         public void Dispose()
         {
             blackTex.Dispose();
-            copyTexturePool.Dispose();
-            entropyTexturePool.Dispose();
+            texturePool.Dispose();
         }
 
         public void Consume(GpuRawFrame input)
@@ -100,19 +101,28 @@ namespace Ravc.WinHost
             context.PixelStage.ShaderResources[0] = null;
             context.ConsumeDrawPipeline();
 
-            var copyPooled = copyTexturePool.Extract(width, height);
+            var copyPooled = texturePool.Extract(width, height);
             var copyTex = copyPooled.Item;
             gpuChannelSwapper.SwapBgraToRgba(context, copyTex, capturedFrameTex);
 
             capturedFramePooled.Release();
 
-            var diffPooled = entropyTexturePool.Extract(width, height);
-            var diffTex = diffPooled.Item;
-            gpuDiffCalculator.CalculateDiff(context, diffTex, copyTex, prevFrameTexPooled != null ? prevFrameTexPooled.Item : blackTex);
+            var temporalDiffPooled = texturePool.Extract(width, height);
+            var temporalDiffTex = temporalDiffPooled.Item;
+            gpuTemporalDiffCalculator.CalculateDiff(context, temporalDiffTex, copyTex, prevFrameTexPooled != null ? prevFrameTexPooled.Item : blackTex);
+
+            gpuDiffMipGenerator.GenerateMips(context, temporalDiffTex);
+
+            var spacialDiffPooled = texturePool.Extract(width, height);
+            var spacialDiffTex = spacialDiffPooled.Item;
+            gpuSpacialDiffCalculator.CalculateDiff(context, spacialDiffTex, temporalDiffTex);
+
+            temporalDiffPooled.Release();
+            //spacialDiffPooled.Release();
 
             //var revertedPooled = entropyTexturePool.Extract(width, height);
             //var revertedTex = diffPooled.Item;
-            //gpuDiffCalculator.RevertDiff(context, revertedTex, diffTex, copyTex);
+            //GpuTemporalDiffCalculator.RevertDiff(context, revertedTex, diffTex, copyTex);
 
             //diffPooled.Release();
 
@@ -122,7 +132,7 @@ namespace Ravc.WinHost
             context.ComputeStage.UnorderedAccessResources[1] = null;
             context.ConsumeDispatchPipeline();
 
-            var encodedFrame = new GpuEncodedFrame(input.Info, diffPooled);
+            var encodedFrame = new GpuEncodedFrame(input.Info, spacialDiffPooled);
             nextStage.Consume(encodedFrame);
 
             if (prevFrameTexPooled != null)
