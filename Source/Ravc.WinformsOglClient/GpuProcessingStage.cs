@@ -41,7 +41,7 @@ namespace Ravc.WinformsOglClient
 
         private readonly TexturePool texturePool;
         private readonly GpuSideDecoder gpuSideDecoder;
-        private readonly GpuSpacialDiffCalculator gpuSpacialDiffCalculator;
+        private readonly GpuSpatialDiffCalculator gpuSpatialDiffCalculator;
         private readonly ITextureInitializer textureInitializer;
         private readonly ITexture2D blackTex;
         private readonly Stopwatch stopwatch;
@@ -55,7 +55,7 @@ namespace Ravc.WinformsOglClient
         public IPipelinedConsumer<GpuSideFrame> NextStage { set { nextStage = value; } }
         public bool IsOverloaded { get { return nextStage.IsOverloaded; } }
 
-        private ITexture2D spacialDiffTex;
+        private ITexture2D spatialDiffTex;
         private ITexture2D temporalDiffTex;
         private ITexture2D workingTex;
 
@@ -66,7 +66,7 @@ namespace Ravc.WinformsOglClient
             this.textureInitializer = textureInitializer;
             texturePool = new TexturePool(context, textureInitializer, false);
             gpuSideDecoder = new GpuSideDecoder(context);
-            gpuSpacialDiffCalculator = new GpuSpacialDiffCalculator(context);
+            gpuSpatialDiffCalculator = new GpuSpatialDiffCalculator(context);
 
             blackTex = context.Create.Texture2D(1, 1, 1, Format.Rgba8);
             stopwatch = new Stopwatch();
@@ -80,10 +80,10 @@ namespace Ravc.WinformsOglClient
                 width = inputInfo.AlignedWidth;
                 height = inputInfo.AlignedHeight;
 
-                if (spacialDiffTex != null)
-                    spacialDiffTex.Dispose();
-                spacialDiffTex = context.Create.Texture2D(width, height, EncodingConstants.MipLevels, Format.Rgba8);
-                textureInitializer.InitializeTexture(spacialDiffTex);
+                if (spatialDiffTex != null)
+                    spatialDiffTex.Dispose();
+                spatialDiffTex = context.Create.Texture2D(width, height, EncodingConstants.MipLevels, Format.Rgba8);
+                textureInitializer.InitializeTexture(spatialDiffTex);
 
                 if (temporalDiffTex != null)
                     temporalDiffTex.Dispose();
@@ -109,13 +109,13 @@ namespace Ravc.WinformsOglClient
             int offset = 0;
             for (int i = 0; i < EncodingConstants.MipLevels; i++)
             {
-                spacialDiffTex.SetData(i, (IntPtr)offset, FormatColor.Bgra, FormatType.UnsignedByte, pixelUnpackBuffer);
+                spatialDiffTex.SetData(i, (IntPtr)offset, FormatColor.Bgra, FormatType.UnsignedByte, pixelUnpackBuffer);
                 offset += (width >> i) * (height >> i) * 4;
             }
             stopwatch.Stop();
             statistics.OnGpuUpload(stopwatch.Elapsed.Milliseconds);
             
-            gpuSpacialDiffCalculator.ApplyDiff(context, temporalDiffTex, spacialDiffTex, workingTex);
+            gpuSpatialDiffCalculator.ApplyDiff(context, temporalDiffTex, spatialDiffTex, workingTex);
 
             var resultPooled = texturePool.Extract(width, height);
             var resultTex = resultPooled.Item;

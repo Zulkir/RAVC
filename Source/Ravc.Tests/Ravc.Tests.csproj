@@ -48,6 +48,7 @@
     <Compile Include="Encoding\ArithmeticCodingTests.cs" />
     <Compile Include="Encoding\CompressionTransformTestsBase.cs" />
     <Compile Include="Encoding\CpuSideCodecTests.cs" />
+    <Compile Include="Encoding\DottedEncodingTests.cs" />
     <Compile Include="Encoding\EntropyTransformTests.cs" />
     <Compile Include="Encoding\TernaryBlockEncodingTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

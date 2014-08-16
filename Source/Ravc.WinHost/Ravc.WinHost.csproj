@@ -68,7 +68,7 @@
   <ItemGroup>
     <Compile Include="BroadcastStage.cs" />
     <Compile Include="GpuDiffMipGenerator.cs" />
-    <Compile Include="GpuSpacialDiffCalculator.cs" />
+    <Compile Include="GpuSpatialDiffCalculator.cs" />
     <Compile Include="CpuCompressionStage.cs" />
     <Compile Include="DebugStage.cs" />
     <Compile Include="FileLogger.cs" />

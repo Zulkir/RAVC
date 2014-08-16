@@ -42,6 +42,7 @@
     <Compile Include="Encoding\EncodingConstants.cs" />
     <Compile Include="Encoding\ICpuSideCodec.cs" />
     <Compile Include="Encoding\Impl\CpuSideCodec.cs" />
+    <Compile Include="Encoding\Transforms\DottedEncoding.cs" />
     <Compile Include="FrameInfo.cs" />
     <Compile Include="Infrastructure\Dimensions.cs" />
     <Compile Include="Encoding\Transforms\ArithmeticCoding.cs" />

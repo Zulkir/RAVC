@@ -41,7 +41,7 @@ namespace Ravc.WinHost
         private readonly GpuChannelSwapper gpuChannelSwapper;
         private readonly GpuTemporalDiffCalculator gpuTemporalDiffCalculator;
         private readonly GpuDiffMipGenerator gpuDiffMipGenerator;
-        private readonly GpuSpacialDiffCalculator gpuSpacialDiffCalculator;
+        private readonly GpuSpatialDiffCalculator gpuSpatialDiffCalculator;
         private readonly ITexture2D blackTex;
         private IPipelinedConsumer<GpuEncodedFrame> nextStage;
         private int width;
@@ -59,7 +59,7 @@ namespace Ravc.WinHost
             gpuChannelSwapper = new GpuChannelSwapper(device);
             gpuTemporalDiffCalculator = new GpuTemporalDiffCalculator(device);
             gpuDiffMipGenerator = new GpuDiffMipGenerator(device);
-            gpuSpacialDiffCalculator = new GpuSpacialDiffCalculator(device);
+            gpuSpatialDiffCalculator = new GpuSpatialDiffCalculator(device);
 
             blackTex = device.Create.Texture2D(new Texture2DDescription
             {
@@ -113,12 +113,12 @@ namespace Ravc.WinHost
 
             gpuDiffMipGenerator.GenerateMips(context, temporalDiffTex);
 
-            var spacialDiffPooled = texturePool.Extract(width, height);
-            var spacialDiffTex = spacialDiffPooled.Item;
-            gpuSpacialDiffCalculator.CalculateDiff(context, spacialDiffTex, temporalDiffTex);
+            var spatialDiffPooled = texturePool.Extract(width, height);
+            var spatialDiffTex = spatialDiffPooled.Item;
+            gpuSpatialDiffCalculator.CalculateDiff(context, spatialDiffTex, temporalDiffTex);
 
             temporalDiffPooled.Release();
-            //spacialDiffPooled.Release();
+            //spatialDiffPooled.Release();
 
             //var revertedPooled = entropyTexturePool.Extract(width, height);
             //var revertedTex = diffPooled.Item;
@@ -132,7 +132,7 @@ namespace Ravc.WinHost
             context.ComputeStage.UnorderedAccessResources[1] = null;
             context.ConsumeDispatchPipeline();
 
-            var encodedFrame = new GpuEncodedFrame(input.Info, spacialDiffPooled);
+            var encodedFrame = new GpuEncodedFrame(input.Info, spatialDiffPooled);
             nextStage.Consume(encodedFrame);
 
             if (prevFrameTexPooled != null)

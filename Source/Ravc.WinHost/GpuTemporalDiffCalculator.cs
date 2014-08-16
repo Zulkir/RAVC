@@ -61,7 +61,7 @@ static int4 White = int4(256, 256, 256, 256);
 %code_main
     int2 pixelCoord = INPUT(ThreadId).xy;
     int4 diff = (White + CurrentFrameTex[pixelCoord] - ParentFrameTex[pixelCoord]) % White;
-    Output[pixelCoord] = diff.bgra;
+    Output[pixelCoord] = diff;
 ";
 
         public GpuTemporalDiffCalculator(IDevice device)

@@ -33,7 +33,7 @@ using Ravc.Utility;
 
 namespace Ravc.WinHost
 {
-    public class GpuSpacialDiffCalculator
+    public class GpuSpatialDiffCalculator
     {
         private readonly IComputeShader computeShader;
         private readonly int formatId;
@@ -56,16 +56,34 @@ Texture2D <uint4> Source : slot = 0
 RWTexture2D <uint4> Output : slot = 0
 
 %code_global
-static int4 White = int4(256, 256, 256, 256);
+static int3 White = int3(256, 256, 256);
+static int3 Grey = int3(128, 128, 128);
 static int2 Two = int2(2, 2);
+
+float MaxComponent(float3 v)
+{
+    return max(max(v.x , v.y), v.z);
+}
+
+uint BuildCompressionInfo(int3 decodedDiff)
+{
+    float3 floatDiff = float3(decodedDiff);
+    float outOfAC8 = MaxComponent(step(float3(2.5, 3.5, 2.5), floatDiff) + step(floatDiff, float3(-3.5, -3.5, -3.5)));
+    //float outOfAC16 = MaxComponent(step(float3(15.5, 31.5, 15.5), floatDiff) + step(floatDiff, float3(-16.5, -32.5, -16.5)));
+    return uint(outOfAC8/* + outOfAC16*/);
+    //return 1;
+}
 
 %code_main
     int2 pixelCoord = INPUT(ThreadId).xy;
-    int4 diff = (White + Source[pixelCoord] - Source.mips[1][pixelCoord / Two]) % White;
-    Output[pixelCoord] = diff;
+    int3 diff = Source[pixelCoord].rgb - Source.mips[1][pixelCoord / Two].rgb;
+    uint3 encodedDiff = uint3((White + diff) % White);
+    int3 decodedDiff = (encodedDiff + Grey) % White - Grey;
+    uint compressionInfo = BuildCompressionInfo(decodedDiff);
+    Output[pixelCoord] = uint4(encodedDiff.bgr, compressionInfo);
 ";
 
-        public GpuSpacialDiffCalculator(IDevice device)
+        public GpuSpatialDiffCalculator(IDevice device)
         {
             computeShader = device.Create.ComputeShader(ShaderParser.Parse(ComputeShaderText));
             formatId = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_UINT).ID;
@@ -75,9 +93,9 @@ static int2 Two = int2(2, 2);
         {
             context.CopySubresourceRegion(target, EncodingConstants.SmallestMip, 0, 0, 0, source, EncodingConstants.SmallestMip, null);
 
-            for (int i = EncodingConstants.SmallestMip - 1; i >= 0; i--)
+            for (int i = EncodingConstants.SmallestMip; i >= 0; i--)
             {
-                var srv = source.ViewAsShaderResource(formatId, i, 2);
+                var srv = source.ViewAsShaderResource(formatId, i, i < EncodingConstants.SmallestMip ? 2 : 1);
                 var uav = target.ViewAsUnorderedAccessResource(formatId, i);
 
                 context.ShaderForDispatching = computeShader;

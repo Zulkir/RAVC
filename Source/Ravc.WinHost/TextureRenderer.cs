@@ -63,13 +63,34 @@ Texture2D <float4> DiffuseTexture : slot = 0, slotGL3 = 0
 DiffuseTexture : TextureMapSampler
 
 %code_global
+
+static int3 White = int3(256, 256, 256);
+static int3 HalfWhite = int3(128, 128, 128);
+static int2 Two = int2(2, 2);
+static float4 FloatWhite = float4(1.0, 1.0, 1.0, 1.0);
+static float4 FloatDivisor = float4(255.0, 255.0, 255.0, 255.0);
+static float4 FloatMultiplier = float4(255.999, 255.999, 255.999, 255.999);
+
+int3 DecodeDiff(uint3 v)
+{
+    return ((v + HalfWhite) % White - HalfWhite);
+}
+
+uint3 EncodeDiff(int3 v)
+{
+    return (v + White) % White;
+}
+
+
 static float3 One = float3(1.0, 1.0, 1.0);
 static float3 Half = float3(0.5, 0.5, 0.5);
 
+
 %code_main
-    float3 val = sample(DiffuseTexture, INPUT(TexCoord)).bgr;
-    val = ((val + Half) % One) - Half;
-    val = abs(val);
+    float3 val = sample(DiffuseTexture, INPUT(TexCoord)).rgb;
+
+    //val = ((val + Half) % One) - Half;
+    //val = abs(val);
 
     float norm = max(val.x, max(val.y, val.z));
 
@@ -81,17 +102,20 @@ static float3 Half = float3(0.5, 0.5, 0.5);
 
     //if (norm < 0.5 / 256)
     //    val = float3(0, 0, 0);
-    //else if (norm < 1.5 / 256)
-    //    val = float3(0, 0, 0);
     //else if (norm < 2.5 / 256)
-    //    val = float3(0, 0, 0);
-    //else if (norm < 7.5 / 256)
     //    val = float3(1, 0, 0);
+    //else if (norm < 8.5 / 256)
+    //    val = float3(0, 1, 0);
     //else
     //    val = float3(1, 1, 1);
 
-    val = val * 8;
-        
+    //val = val * 256;
+    
+    float a = sample(DiffuseTexture, INPUT(TexCoord)).a;
+    val = norm < 0.5/256 ? float3(0,0,0) : a < 0.5/256 ? float3(1,0,0) : a < 1.5/256 ? float3(0,1,0) : a < 2.5/256 ? float3(0,0,1) : float3(1,1,1);
+
+    //val = norm < 0.5/256 ? float3(0,0,0) : float3(1,1,1);    
+
     OUTPUT(Color) = float4(val, 1.0);
 ";
 

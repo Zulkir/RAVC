@@ -32,7 +32,7 @@ using Ravc.Encoding;
 
 namespace Ravc.WinformsOglClient
 {
-    public class GpuSpacialDiffCalculator
+    public class GpuSpatialDiffCalculator
     {
         [StructLayout(LayoutKind.Sequential)]
         private struct Vertex
@@ -111,11 +111,12 @@ void main()
     out_color = ToFloat(EncodeDiff(avgDiff + localDiff));
 
     //out_color = ToFloat(EncodeDiff(localDiff));
+    //out_color = MipLevel <= 0 ? ToFloat(EncodeDiff(avgDiff)) : ToFloat(EncodeDiff(localDiff));
     //out_color = vec4(1, 0, 0, 1);
 }
 ";
 
-        public GpuSpacialDiffCalculator(IContext context)
+        public GpuSpatialDiffCalculator(IContext context)
         {
             var vertexShader = context.Create.VertexShader(VertexShaderText);
             var fragmentShader = context.Create.FragmentShader(FragmentShaderText);
@@ -154,7 +155,7 @@ void main()
             localDiffsampler = context.Create.Sampler();
         }
 
-        public unsafe void ApplyDiff(IContext context, ITexture2D target, ITexture2D spacialDiffTexture, ITexture2D workingTexture)
+        public unsafe void ApplyDiff(IContext context, ITexture2D target, ITexture2D spatialDiffTexture, ITexture2D workingTexture)
         {
             var pipeline = context.Pipeline;
 
@@ -169,7 +170,7 @@ void main()
             pipeline.UniformBuffers[0] = stepInfoBuffer;
             
             pipeline.Samplers[0] = avgDiffsampler;
-            pipeline.Textures[1] = spacialDiffTexture;
+            pipeline.Textures[1] = spatialDiffTexture;
             pipeline.Samplers[1] = localDiffsampler;
 
             pipeline.DepthStencil.SetDefault();
@@ -187,7 +188,7 @@ void main()
                 stepInfoBuffer.SetDataByMapping((IntPtr)(&stepInfoBufferData));
             
                 framebuffer.AttachTextureImage(FramebufferAttachmentPoint.Color0, target, i);
-                pipeline.Viewports[0].Set(spacialDiffTexture.Width >> i, spacialDiffTexture.Height >> i);
+                pipeline.Viewports[0].Set(spatialDiffTexture.Width >> i, spatialDiffTexture.Height >> i);
                 pipeline.Textures[0] = workingTexture;
             
                 context.DrawElements(BeginMode.Triangles, 6, DrawElementsType.UnsignedShort, 0);

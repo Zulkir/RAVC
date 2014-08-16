@@ -69,11 +69,34 @@ namespace Ravc.Tests.Encoding
             return (uint)random.Next(int.MinValue, int.MaxValue) & 0x00FFFFFF;
         }
 
+        private static void FillAlpha(uint[] original)
+        {
+            for (int i = 0; i < original.Length; i++)
+            {
+                uint pixel = original[i];
+                var red = (sbyte)(pixel & 0xFF);
+                var green = (sbyte)((pixel >> 8) & 0xFF);
+                var blue = (sbyte)((pixel >> 16) & 0xFF);
+                if (-3 > red || red > 2 || -3 > green || green > 3 || -3 > blue || blue > 2)
+                    original[i] = pixel | 0x01000000;
+            }
+        }
+
+        private static void EraseAlpha(uint[] original)
+        {
+            for (int i = 0; i < original.Length; i++)
+            {
+                original[i] &= 0x00FFFFFF;
+            }
+        }
+
         private unsafe void DoTest(int width, int height, Func<int, uint> getPixel)
         {
             var frameInfo = new FrameInfo(FrameType.Relative, 123456.789f, width, height);
             var uncompressedSizeInPixels = frameInfo.UncompressedSize / 4;
             var pixels = Enumerable.Range(0, uncompressedSizeInPixels).Select(getPixel).ToArray();
+            FillAlpha(pixels);
+
             var frame = new UncompressedFrame(frameInfo, byteArrayPool.Extract(uncompressedSizeInPixels * 4));
             fixed (byte* frameData = frame.DataPooled.Item)
             {
@@ -97,6 +120,7 @@ namespace Ravc.Tests.Encoding
                     resultPixels[i] = resultDataUint[i] & 0x00FFFFFF;
             }
 
+            EraseAlpha(pixels);
             Assert.That(resultPixels, Is.EqualTo(pixels));
         }
 
