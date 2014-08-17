@@ -43,23 +43,15 @@ namespace Ravc.WinformsOglClient
         [StructLayout(LayoutKind.Sequential)]
         private struct Vertex
         {
-            public Vector4 Position;
-            public Vector4 TexCoord;
+            public Vector2 Position;
 
-            public Vertex(float px, float py, float tx, float ty)
+            public Vertex(float px, float py)
             {
                 Position.X = px;
                 Position.Y = py;
-                Position.Z = 0f;
-                Position.W = 0f;
-
-                TexCoord.X = tx;
-                TexCoord.Y = ty;
-                TexCoord.Z = 0f;
-                TexCoord.W = 0f;
             }
 
-            public const int Size = 2 * 4 * sizeof(float);
+            public const int Size = 2 * sizeof(float);
         }
 
         private readonly IShaderProgram program;
@@ -71,68 +63,32 @@ namespace Ravc.WinformsOglClient
 @"#version 150
 
 in vec4 in_position;
-in vec4 in_tex_coord;
 
 out vec2 v_tex_coord;
 
 void main()
 {
     gl_Position = vec4(in_position.x, -in_position.y, 0.0f, 1.0f);
-    v_tex_coord = in_tex_coord.xy;
 }
 ";
 
         private const string FragmentShaderText =
 @"#version 150
-uniform sampler2D DiffuseTexture;
-uniform sampler2D ParentTexture;
-
-in vec2 v_tex_coord;
+uniform sampler2D DiffTexture;
+uniform sampler2D PrevTexture;
 
 out vec4 out_color;
 
-const ivec4 White = ivec4(256, 256, 256, 256);
-const ivec4 HalfWhite = ivec4(128, 128, 128, 128);
-
-uvec4 ToUint(vec4 v)
-{
-    return uvec4(v * 255.999);
-}
-
-vec4 ToFloat(uvec4 v)
-{
-    return vec4(v) / 255;
-}
-
-ivec4 DecodeDiff(uvec4 v)
-{
-    return ivec4((v + HalfWhite) % White - HalfWhite);
-}
-
-uvec4 EncodeDiff(ivec4 v)
-{
-    return uvec4((v + White) % White);
-}
-
-vec3 AddWithOverflow(vec3 v1, vec3 v2)
-{
-    ivec3 i1 = ivec3(v1 * 255.999);
-    ivec3 i2 = ivec3(v2 * 255.999);
-
-    ivec3 iResult = (i1 + i2) % ivec3(256, 256, 256);
-    return vec3(iResult) / 255;
-}
+const float AbsCoef = (255.0f/256.0f);
+const float NormCoef = (256.0f/255.0f);
+const vec4 One = vec4(1.0, 1.0, 1.0, 1.0);
 
 void main()
 {
-    vec3 diff = texture(DiffuseTexture, v_tex_coord).xyz;
-    vec3 prev = texture(ParentTexture, v_tex_coord).xyz;
-    vec3 result = AddWithOverflow(diff, prev);
-    out_color = vec4(result, 1.0);
-    //out_color = vec4(diff, 1.0);
-    //vec4 val = vec4(DecodeDiff(ToUint(vec4(diff, 1.0)))) / 255;
-    //out_color = abs(val) * 16;
-    //out_color = vec4(1.0, 0.0, 0.0, 1.0);
+    ivec2 intCoord = ivec2(gl_FragCoord.xy);
+    vec4 nDiff = texelFetch(DiffTexture, intCoord, 0);
+    vec4 nPrev = texelFetch(PrevTexture, intCoord, 0);
+    out_color = NormCoef * mod((AbsCoef * (nPrev + nDiff)), One);
 }
 ";
 
@@ -144,16 +100,16 @@ void main()
             {
                 VertexShaders = new[] { vertexShader },
                 FragmentShaders = new[] { fragmentShader },
-                VertexAttributeNames = new[] { "in_position", "in_tex_coord" },
-                SamplerNames = new[] { "DiffuseTexture", "ParentTexture" }
+                VertexAttributeNames = new[] { "in_position" },
+                SamplerNames = new[] { "DiffTexture", "PrevTexture" }
             });
 
             var vertexBuffer = context.Create.Buffer(BufferTarget.ArrayBuffer, 4 * Vertex.Size, BufferUsageHint.StaticDraw, new[]
             {
-                new Vertex(-1f, 1f, 0f, 0f),
-                new Vertex(1f, 1f, 1f, 0f),
-                new Vertex(1f, -1f, 1f, 1f),
-                new Vertex(-1f, -1f, 0f, 1f)
+                new Vertex(-1f, 1f),
+                new Vertex(1f, 1f),
+                new Vertex(1f, -1f),
+                new Vertex(-1f, -1f)
             });
 
             var elementArrayBuffer = context.Create.Buffer(BufferTarget.ElementArrayBuffer, 6 * sizeof(ushort), BufferUsageHint.StaticDraw, new ushort[]
@@ -163,7 +119,6 @@ void main()
 
             vertexArray = context.Create.VertexArray();
             vertexArray.SetVertexAttributeF(0, vertexBuffer, VertexAttributeDimension.Two, VertexAttribPointerType.Float, false, Vertex.Size, 0);
-            vertexArray.SetVertexAttributeF(1, vertexBuffer, VertexAttributeDimension.Two, VertexAttribPointerType.Float, false, Vertex.Size, 4 * sizeof(float));
             vertexArray.SetElementArrayBuffer(elementArrayBuffer);
 
             framebuffer = context.Create.Framebuffer();

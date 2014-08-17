@@ -41,7 +41,7 @@ namespace Ravc.WinformsOglClient
         private volatile bool isRunning;
 
         public IPipelinedConsumer<UncompressedFrame> NextStage { set { nextStage = value; } }
-        public bool IsOverloaded { get { return nextStage.IsOverloaded || queue.Count > 50; } }
+        public bool IsOverloaded { get { return queue.Count > 10; } }
 
         public CpuDecompressionStage(IClientStatistics statistics, ByteArrayPool byteArrayPool)
         {

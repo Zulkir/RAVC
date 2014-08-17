@@ -79,40 +79,16 @@ uniform sampler2D LocalDiffTexture;
 
 out vec4 out_color;
 
-const ivec4 White = ivec4(256, 256, 256, 256);
-const ivec4 HalfWhite = ivec4(128, 128, 128, 128);
-
-uvec4 ToUint(vec4 v)
-{
-    return uvec4(v * 255.999);
-}
-
-vec4 ToFloat(uvec4 v)
-{
-    return vec4(v) / 255;
-}
-
-ivec4 DecodeDiff(uvec4 v)
-{
-    return ivec4((v + HalfWhite) % White - HalfWhite);
-}
-
-uvec4 EncodeDiff(ivec4 v)
-{
-    return uvec4((v + White) % White);
-}
+const float AbsCoef = (255.0f/256.0f);
+const float NormCoef = (256.0f/255.0f);
+const vec4 One = vec4(1.0, 1.0, 1.0, 1.0);
 
 void main()
 {
     ivec2 intCoord = ivec2(gl_FragCoord.xy);
-    ivec4 avgDiff   = DecodeDiff(ToUint(texelFetch(AverageDiffTexture, intCoord / 2, MipLevel + 1)));
-    ivec4 localDiff = DecodeDiff(ToUint(texelFetch(LocalDiffTexture, intCoord, MipLevel)));
-
-    out_color = ToFloat(EncodeDiff(avgDiff + localDiff));
-
-    //out_color = ToFloat(EncodeDiff(localDiff));
-    //out_color = MipLevel <= 0 ? ToFloat(EncodeDiff(avgDiff)) : ToFloat(EncodeDiff(localDiff));
-    //out_color = vec4(1, 0, 0, 1);
+    vec4 nAvgDiff = texelFetch(AverageDiffTexture, intCoord / 2, MipLevel + 1);
+    vec4 nLocalDiff = texelFetch(LocalDiffTexture, intCoord, MipLevel);
+    out_color = NormCoef * mod((AbsCoef * (nAvgDiff + nLocalDiff)), One);
 }
 ";
 
@@ -144,7 +120,6 @@ void main()
 
             vertexArray = context.Create.VertexArray();
             vertexArray.SetVertexAttributeF(0, vertexBuffer, VertexAttributeDimension.Two, VertexAttribPointerType.Float, false, Vertex.Size, 0);
-            //vertexArray.SetVertexAttributeF(1, vertexBuffer, VertexAttributeDimension.Two, VertexAttribPointerType.Float, false, Vertex.Size, 4 * sizeof(float));
             vertexArray.SetElementArrayBuffer(elementArrayBuffer);
 
             framebuffer = context.Create.Framebuffer();

@@ -35,7 +35,7 @@ namespace Ravc.WinformsOglClient
         private IPipelinedConsumer<UncompressedFrame> nextStage;
 
         public IPipelinedConsumer<UncompressedFrame> NextStage { set { nextStage = value; } }
-        public bool IsOverloaded { get { return queue.Count > 5; } }
+        public bool IsOverloaded { get { return queue.Count > 20; } }
 
         public MainThreadBorderStage(IClientStatistics statistics)
         {
