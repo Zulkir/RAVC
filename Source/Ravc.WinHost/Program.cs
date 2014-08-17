@@ -84,19 +84,21 @@ namespace Ravc.WinHost
             var gpuReadBackStage = new GpuReadBackStage(device, byteArrayPool, 3);
             var debugStage = new DebugStage(device);
             var gpuProcessingStage = new GpuProcessingStage(device);
-            var screenCapturer = new ScreenCapturer9(device);
-            var mainLoop = new MainLoop(device, screenCapturer);
+            var screenCaptor = new ScreenCaptor9(device);
+            //var screenCaptor = new ScreenCaptor11(logger, device);
+            var mainLoop = new MainLoop(device, screenCaptor);
 
             PipelineBuilder
                 .BeginWith(mainLoop)
                 .ContinueWith(gpuProcessingStage)
-                .ContinueWith(debugStage)
+                //.ContinueWith(debugStage)
                 .ContinueWith(gpuReadBackStage)
                 .ContinueWith(cpuCompressionStage)
                 .EndWith(broadcastingStage);
 
             broadcaster.Start();
             cpuCompressionStage.Start();
+            screenCaptor.Start();
 
             eye.NewFrame += mainLoop.OnNewFrame;
 
@@ -111,6 +113,7 @@ namespace Ravc.WinHost
 
             cpuCompressionStage.Stop();
             broadcaster.Stop();
+            screenCaptor.Stop();
         }
     }
 }

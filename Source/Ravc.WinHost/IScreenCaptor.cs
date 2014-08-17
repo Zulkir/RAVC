@@ -25,13 +25,13 @@ THE SOFTWARE.
 using System;
 using Beholder.Core;
 using Beholder.Math;
-using Beholder.Resources;
-using Ravc.Utility;
 
 namespace Ravc.WinHost
 {
-    public interface IScreenCapturer : IDisposable
+    public interface IScreenCaptor : IDisposable
     {
-        IPooled<ITexture2D> Capture(IDeviceContext deviceContext, IntRectangle clientRectangle);
+        bool TryGetCaptured(IDeviceContext deviceContext, IntRectangle clientRectangle, FrameType frameType, float defaultTimestamp, out GpuRawFrame capturedFrame);
+        void Start();
+        void Stop();
     }
 }

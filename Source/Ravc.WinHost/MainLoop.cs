@@ -35,21 +35,21 @@ namespace Ravc.WinHost
     public class MainLoop : IPipelinedProvider<GpuRawFrame>, IDisposable
     {
         private readonly IDevice device;
-        private readonly IScreenCapturer screenCapturer;
+        private readonly IScreenCaptor screenCaptor;
         private IPipelinedConsumer<GpuRawFrame> nextStage;
         private IntSize oldSize;
 
         public IPipelinedConsumer<GpuRawFrame> NextStage { set { nextStage = value; } }
 
-        public MainLoop(IDevice device, IScreenCapturer screenCapturer)
+        public MainLoop(IDevice device, IScreenCaptor screenCaptor)
         {
             this.device = device;
-            this.screenCapturer = screenCapturer;
+            this.screenCaptor = screenCaptor;
         }
 
         public void Dispose()
         {
-            screenCapturer.Dispose();
+            screenCaptor.Dispose();
         }
 
         public void OnNewFrame(IRealTime realTime)
@@ -77,10 +77,9 @@ namespace Ravc.WinHost
 
                 context.ClearRenderTargetView(swapChain.GetCurrentColorBuffer(), Color4.CornflowerBlue);
 
-                var frameTexturePooled = screenCapturer.Capture(context, beholderRect);
-                var frameInfo = new FrameInfo(FrameType.Relative, realTime.TotalRealTime, size.Width, size.Height);
-                var gpuRawFrame = new GpuRawFrame(frameInfo, frameTexturePooled);
-                nextStage.Consume(gpuRawFrame);
+                GpuRawFrame capturedFrame;
+                if (screenCaptor.TryGetCaptured(context, beholderRect, FrameType.Relative, realTime.TotalRealTime, out capturedFrame))
+                    nextStage.Consume(capturedFrame);
 
                 swapChain.EndScene();
                 swapChain.Present();

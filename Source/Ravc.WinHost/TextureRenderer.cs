@@ -111,8 +111,8 @@ static float3 Half = float3(0.5, 0.5, 0.5);
 
     //val = val * 256;
     
-    float a = sample(DiffuseTexture, INPUT(TexCoord)).a;
-    val = norm < 0.5/256 ? float3(0,0,0) : a < 0.5/256 ? float3(1,0,0) : a < 1.5/256 ? float3(0,1,0) : a < 2.5/256 ? float3(0,0,1) : float3(1,1,1);
+    //float a = sample(DiffuseTexture, INPUT(TexCoord)).a;
+    //val = norm < 0.5/256 ? float3(0,0,0) : a < 0.5/256 ? float3(1,0,0) : a < 1.5/256 ? float3(0,1,0) : a < 2.5/256 ? float3(0,0,1) : float3(1,1,1);
 
     //val = norm < 0.5/256 ? float3(0,0,0) : float3(1,1,1);    
 

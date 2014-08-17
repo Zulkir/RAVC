@@ -75,9 +75,10 @@ static int4 White = int4(256, 256, 256, 256);
             var uav = target.ViewAsUnorderedAccessResource(formatId, 0);
             
             context.ShaderForDispatching = computeShader;
+            context.ComputeStage.UnorderedAccessResources[0] = uav;
+            //context.ConsumeDispatchPipeline();
             context.ComputeStage.ShaderResources[0] = texture.ViewAsShaderResource(formatId, 0, 1);
             context.ComputeStage.ShaderResources[1] = parentTexture.ViewAsShaderResource(formatId, 0, 1);
-            context.ComputeStage.UnorderedAccessResources[0] = uav;
 
             context.Dispatch(RavcMath.DivideAndCeil(target.Width, 16), RavcMath.DivideAndCeil(target.Height, 16), 1);
         }
