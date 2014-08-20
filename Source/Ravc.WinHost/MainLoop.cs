@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Beholder;
 using Beholder.Math;
@@ -34,17 +35,21 @@ namespace Ravc.WinHost
 {
     public class MainLoop : IPipelinedProvider<GpuRawFrame>, IDisposable
     {
+        private readonly IHostStatistics statistics;
         private readonly IDevice device;
         private readonly IScreenCaptor screenCaptor;
+        private readonly Stopwatch stopwatch;
         private IPipelinedConsumer<GpuRawFrame> nextStage;
         private IntSize oldSize;
 
         public IPipelinedConsumer<GpuRawFrame> NextStage { set { nextStage = value; } }
 
-        public MainLoop(IDevice device, IScreenCaptor screenCaptor)
+        public MainLoop(IHostStatistics statistics, IDevice device, IScreenCaptor screenCaptor)
         {
+            this.statistics = statistics;
             this.device = device;
             this.screenCaptor = screenCaptor;
+            stopwatch = new Stopwatch();
         }
 
         public void Dispose()
@@ -71,6 +76,7 @@ namespace Ravc.WinHost
                 if (!size.Equals(oldSize) && size.Width > 0 && size.Height > 0)
                 {
                     oldSize = size;
+                    statistics.OnResize(size.Width, size.Height);
                 }
 
                 var context = device.ImmediateContext;
@@ -79,10 +85,19 @@ namespace Ravc.WinHost
 
                 GpuRawFrame capturedFrame;
                 if (screenCaptor.TryGetCaptured(context, beholderRect, FrameType.Relative, realTime.TotalRealTime, out capturedFrame))
+                {
+                    stopwatch.Restart();
                     nextStage.Consume(capturedFrame);
+                    stopwatch.Stop();
+                    statistics.OnGpuCalls(stopwatch.Elapsed.TotalMilliseconds);
+                }
 
                 swapChain.EndScene();
+
+                stopwatch.Restart();
                 swapChain.Present();
+                stopwatch.Stop();
+                statistics.OnPresent(realTime.ElapsedRealTime, stopwatch.Elapsed.TotalMilliseconds);
             }
         }
 

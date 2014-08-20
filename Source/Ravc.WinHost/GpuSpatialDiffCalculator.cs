@@ -99,8 +99,10 @@ uint BuildCompressionInfo(int3 decodedDiff)
                 var uav = target.ViewAsUnorderedAccessResource(formatId, i);
 
                 context.ShaderForDispatching = computeShader;
+
                 context.ComputeStage.ShaderResources[0] = srv;
                 context.ComputeStage.UnorderedAccessResources[0] = uav;
+
                 context.Dispatch(RavcMath.DivideAndCeil(target.Width >> i, 16), RavcMath.DivideAndCeil(target.Height >> i, 16), 1);
             }
         }

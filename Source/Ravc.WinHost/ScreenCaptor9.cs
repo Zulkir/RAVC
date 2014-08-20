@@ -40,21 +40,18 @@ namespace Ravc.WinHost
 {
     public class ScreenCaptor9 : IScreenCaptor
     {
-        private readonly TexturePool texturePool;
-
+        private readonly IHostStatistics statistics;
         private readonly Form form;
         private readonly Direct3D direct3D;
         private readonly Device d3dDevice;
         private readonly Surface d3dSurface1;
+        private readonly TexturePool texturePool;
 
         private readonly Stopwatch stopwatch;
-        private long ms;
-        private long max;
-        private int c;
-        private int bigCount;
 
-        public ScreenCaptor9(IDevice device)
+        public ScreenCaptor9(IHostStatistics statistics, IDevice device)
         {
+            this.statistics = statistics;
             var resultFormatId = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.B8G8R8A8_UNORM).ID;
             texturePool = new TexturePool(device, resultFormatId, Usage.Dynamic, BindFlags.ShaderResource, MiscFlags.None);
 
@@ -68,7 +65,6 @@ namespace Ravc.WinHost
 
             d3dSurface1 = Surface.CreateOffscreenPlain(d3dDevice, 4096, 1440, Format.A8R8G8B8, Pool.Scratch);
 
-            form.Show();
             stopwatch = new Stopwatch();
         }
 
@@ -89,13 +85,14 @@ namespace Ravc.WinHost
 
         public unsafe bool TryGetCaptured(IDeviceContext context, IntRectangle clientRectangle, FrameType frameType, float defaultTimestamp, out GpuRawFrame capturedFrame)
         {
+            stopwatch.Restart();
+
             var result = texturePool.Extract(clientRectangle.Width, clientRectangle.Height);
             var resultTexture = result.Item;
-
-            stopwatch.Restart();
+            
             d3dDevice.GetFrontBufferData(0, d3dSurface1);
             var sdxRectangle = new Rectangle(clientRectangle.X, clientRectangle.Y, clientRectangle.X + clientRectangle.Width, clientRectangle.Y + clientRectangle.Height);
-
+            
             var lockedRectangle = d3dSurface1.LockRectangle(sdxRectangle, LockFlags.ReadOnly);
             var mappedSubresource = context.Map(resultTexture, 0, MapType.WriteDiscard, MapFlags.None);
             {
@@ -108,27 +105,13 @@ namespace Ravc.WinHost
             }
             context.Unmap(resultTexture, 0);
             d3dSurface1.UnlockRectangle();
-            stopwatch.Stop();
-
-            var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
-            ms += elapsedMilliseconds;
-            if (elapsedMilliseconds > 15)
-                bigCount++;
-            if (elapsedMilliseconds > max)
-                max = elapsedMilliseconds;
-
-            c++;
-
-            if ((c & 0xf) == 0)
-            {
-                form.Text = string.Format("{0}---{1}---{2}", Math.Round((double)ms / 0x10, 2), max, bigCount);
-                ms = 0;
-                max = 0;
-                c = 0;
-            }
 
             var frameInfo = new FrameInfo(frameType, (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency, clientRectangle.Width, clientRectangle.Height);
             capturedFrame = new GpuRawFrame(frameInfo, result);
+
+            stopwatch.Stop();
+            statistics.OnCapture(stopwatch.Elapsed.TotalMilliseconds);
+
             return true;
         }
     }

@@ -69,12 +69,13 @@ RWTexture2D <float4> Output : slot = 0
         public void SwapBgraToRgba(IDeviceContext context, ITexture2D target, ITexture2D texture)
         {
             var uav = target.ViewAsUnorderedAccessResource(rgbaFormat, 0);
+            var srv = texture.ViewAsShaderResource(bgraFormat, 0, 1);
 
             context.ShaderForDispatching = computeShader;
-            context.ComputeStage.ShaderResources[0] = texture.ViewAsShaderResource(bgraFormat, 0, 1);
+            context.ComputeStage.ShaderResources[0] = srv;
             context.ComputeStage.UnorderedAccessResources[0] = uav;
 
-            context.Dispatch(RavcMath.DivideAndCeil(target.Width / 16, 16), RavcMath.DivideAndCeil(target.Width / 16, 16), 1);
+            context.Dispatch(RavcMath.DivideAndCeil(target.Width, 16), RavcMath.DivideAndCeil(target.Height, 16), 1);
         } 
     }
 }

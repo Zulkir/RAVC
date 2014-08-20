@@ -54,15 +54,14 @@ namespace Ravc.WinformsOglClient
             if (nextStage.IsOverloaded)
                 return;
 
+            statistics.OnMainThreadQueue(queue.Count);
             for (int i = 0; i < 3; i++)
             {
                 UncompressedFrame uncompressedFrame;
                 if (!nextStage.IsOverloaded && queue.TryDequeue(out uncompressedFrame))
-                {
-                    statistics.OnMainThreadQueue(queue.Count);
                     nextStage.Consume(uncompressedFrame);
-                }
             }
+            statistics.OnMainThreadQueue(queue.Count);
         }
     }
 }

@@ -25,6 +25,7 @@ THE SOFTWARE.
 using System;
 using Beholder;
 using Beholder.Core;
+using Beholder.Libraries.SharpDX11.Core;
 using Beholder.Platform;
 using Beholder.Resources;
 using Ravc.Utility;
@@ -98,18 +99,25 @@ namespace Ravc.WinHost
                 }
             }
 
-            context.PixelStage.ShaderResources[0] = null;
-            context.ConsumeDrawPipeline();
+            //context.PixelStage.ShaderResources[0] = null;
+            //context.ConsumeDrawPipeline();
 
             var copyPooled = texturePool.Extract(width, height);
             var copyTex = copyPooled.Item;
             gpuChannelSwapper.SwapBgraToRgba(context, copyTex, capturedFrameTex);
+
+            ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetUnorderedAccessView(0, null);
+            ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(0, null);
 
             capturedFramePooled.Release();
 
             var temporalDiffPooled = texturePool.Extract(width, height);
             var temporalDiffTex = temporalDiffPooled.Item;
             gpuTemporalDiffCalculator.CalculateDiff(context, temporalDiffTex, copyTex, prevFrameTexPooled != null ? prevFrameTexPooled.Item : blackTex);
+
+            ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetUnorderedAccessView(0, null);
+            ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(0, null);
+            ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(1, null);
 
             gpuDiffMipGenerator.GenerateMips(context, temporalDiffTex);
 
@@ -120,23 +128,14 @@ namespace Ravc.WinHost
             temporalDiffPooled.Release();
             //spatialDiffPooled.Release();
 
-            //var revertedPooled = entropyTexturePool.Extract(width, height);
-            //var revertedTex = diffPooled.Item;
-            //GpuTemporalDiffCalculator.RevertDiff(context, revertedTex, diffTex, copyTex);
-
-            //diffPooled.Release();
-
-            context.ComputeStage.ShaderResources[0] = null;
-            context.ComputeStage.ShaderResources[1] = null;
-            context.ComputeStage.UnorderedAccessResources[0] = null;
-            context.ComputeStage.UnorderedAccessResources[1] = null;
-            context.ConsumeDispatchPipeline();
-
             var encodedFrame = new GpuEncodedFrame(input.Info, spatialDiffPooled);
             nextStage.Consume(encodedFrame);
 
             if (prevFrameTexPooled != null)
+            {
                 prevFrameTexPooled.Release();
+                prevFrameTexPooled = null;
+            }   
             prevFrameTexPooled = copyPooled;
         }
     }

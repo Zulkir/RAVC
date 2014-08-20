@@ -26,14 +26,13 @@ namespace Ravc.WinHost
 {
     public interface IHostStatistics
     {
-        int FramesPerSecond { get; }
-        int Width { get; }
-        int Height { get; }
-        long TotalBytes { get; }
-        long AverageBitrate { get; }
-
-        void Initialize();
-        void OnNewFrame(FrameInfo frameInfo, int compressedSize);
-        void Reset();
+        void ShowForm();
+        void OnPresent(double frameSeconds, double presentMs);
+        void OnCapture(double ms);
+        void OnGpuCalls(double ms);
+        void OnReadback(double ms);
+        void OnCpuProcessingQueue(int queueCount);
+        void OnFrameCompressed(int bytes, double ms);
+        void OnResize(int newWidth, int newHeight);
     }
 }

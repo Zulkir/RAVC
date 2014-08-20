@@ -22,62 +22,121 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
+using System.Globalization;
+using Ravc.Utility;
 
 namespace Ravc.WinHost
 {
     public class HostStatistics : IHostStatistics
     {
-        private readonly Stopwatch stopwatch;
-        private readonly List<int> frameSizes;
-        private readonly object updateLock = new object();
+        private readonly StatisticsForm form;
+        private readonly StatCounter frameTime;
+        private readonly StatCounter captureTime;
+        private readonly StatCounter gpuCallsTime;
+        private readonly StatCounter readbackTime;
+        private readonly StatCounter presentTime;
+        private readonly StatCounter cpuProcessingQueue;
+        private readonly StatCounter compressionTime;
 
-        public int FramesPerSecond { get; private set; }
-        public int Width { get; private set; }
-        public int Height { get; private set; }
-        public long TotalBytes { get; private set; }
-        public long AverageBitrate { get; private set; }
+        private int frames;
+        private int width;
+        private int height;
+        private int compressedBytes;
 
         public HostStatistics()
         {
-            stopwatch = new Stopwatch();
-            frameSizes = new List<int>();
+            form = new StatisticsForm();
+
+            frameTime = new StatCounter();
+            captureTime = new StatCounter();
+            gpuCallsTime = new StatCounter();
+            readbackTime = new StatCounter();
+            presentTime = new StatCounter();
+            cpuProcessingQueue = new StatCounter();
+            compressionTime = new StatCounter();
         }
 
-        public void Initialize()
+        public void ShowForm()
         {
-            stopwatch.Start();
+            form.Show();
         }
 
-        public void OnNewFrame(FrameInfo frameInfo, int compressedSize)
+        public void OnPresent(double frameSeconds, double presentMs)
         {
-            lock (updateLock)
+            frameTime.AddValue(frameSeconds);
+            presentTime.AddValue(presentMs);
+
+            frames++;
+            if (frameTime.Accumulated > 0.25)
             {
-                frameSizes.Add(compressedSize);
-                TotalBytes += compressedSize;
+                form.lbFps.Text = FormatValue(1.0 / frameTime.Average);
+                form.lbSize.Text = string.Format("{0}x{1} ({2:0.##e+0})", width, height, width * height);
+                form.lbCapture.Text = FormatMinMax(captureTime);
+                form.lbGpuCallsTime.Text = FormatMinMax(gpuCallsTime);
+                form.lbReadbackTime.Text = FormatMinMax(readbackTime);
+                form.lbPresentTime.Text = FormatMinMax(presentTime);
+                form.lbCpuProcessingQueue.Text = FormatQueue(cpuProcessingQueue);
+                form.lbCompressionTime.Text = FormatMinMax(compressionTime);
+                form.lbBitrate.Text = string.Format(CultureInfo.InvariantCulture, "{0:F3} Mbit/s", (double)compressedBytes * 8.0 / frameTime.Accumulated / 1024.0 / 1024);
 
-                if (frameSizes.Count == 10)
-                {
-                    FramesPerSecond = (int)Math.Round(frameSizes.Count / stopwatch.Elapsed.TotalSeconds);
-                    Width = frameInfo.AlignedWidth;
-                    Height = frameInfo.AlignedHeight;
+                frameTime.Reset();
+                captureTime.Reset();
+                gpuCallsTime.Reset();
+                readbackTime.Reset();
+                presentTime.Reset();
+                cpuProcessingQueue.Reset();
+                compressionTime.Reset();
 
-                    stopwatch.Restart();
-                    long totalBytesPast30Frames = frameSizes.Select(x => (long)x).Sum();
-                    AverageBitrate = totalBytesPast30Frames * FramesPerSecond * 8 / 10;
-                    frameSizes.Clear();
-                }
+                frames = 0;
+                compressedBytes = 0;
             }
         }
 
-        public void Reset()
+        private static string FormatMinMax(StatCounter statCounter)
         {
-            frameSizes.Clear();
-            TotalBytes = 0;
-            stopwatch.Restart();
+            return string.Format("{0:0.#}--{1:0.#}   ({2:0.##})", statCounter.Min, statCounter.Max, statCounter.Average);
+        }
+
+        private static string FormatQueue(StatCounter statCounter)
+        {
+            return string.Format("{0:0}--{1:0}   ({2:0.#})", statCounter.Min, statCounter.Max, statCounter.Average);
+        }
+
+        private static string FormatValue(double value, int decimals = 0)
+        {
+            return value.ToString("N" + decimals.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+        }
+
+        public void OnCapture(double ms)
+        {
+            captureTime.AddValue(ms);
+        }
+
+        public void OnGpuCalls(double ms)
+        {
+            gpuCallsTime.AddValue(ms);
+        }
+
+        public void OnReadback(double ms)
+        {
+            readbackTime.AddValue(ms);
+        }
+
+        public void OnCpuProcessingQueue(int queueCount)
+        {
+            cpuProcessingQueue.AddValue(queueCount);
+        }
+
+        public void OnFrameCompressed(int bytes, double ms)
+        {
+            compressionTime.AddValue(ms);
+            compressedBytes += bytes;
+        }
+
+        public void OnResize(int newWidth, int newHeight)
+        {
+            width = newWidth;
+            height = newHeight;
         }
     }
 }

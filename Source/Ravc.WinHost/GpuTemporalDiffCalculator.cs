@@ -70,15 +70,16 @@ static int4 White = int4(256, 256, 256, 256);
             formatId = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_UINT).ID;
         }
 
-        public void CalculateDiff(IDeviceContext context, ITexture2D target, ITexture2D texture, ITexture2D parentTexture)
+        public void CalculateDiff(IDeviceContext context, ITexture2D target, ITexture2D current, ITexture2D parentTexture)
         {
             var uav = target.ViewAsUnorderedAccessResource(formatId, 0);
-            
+            var currentSrv = current.ViewAsShaderResource(formatId, 0, 1);
+            var parentSrv = parentTexture.ViewAsShaderResource(formatId, 0, 1);
+
             context.ShaderForDispatching = computeShader;
             context.ComputeStage.UnorderedAccessResources[0] = uav;
-            //context.ConsumeDispatchPipeline();
-            context.ComputeStage.ShaderResources[0] = texture.ViewAsShaderResource(formatId, 0, 1);
-            context.ComputeStage.ShaderResources[1] = parentTexture.ViewAsShaderResource(formatId, 0, 1);
+            context.ComputeStage.ShaderResources[0] = currentSrv;
+            context.ComputeStage.ShaderResources[1] = parentSrv;
 
             context.Dispatch(RavcMath.DivideAndCeil(target.Width, 16), RavcMath.DivideAndCeil(target.Height, 16), 1);
         }

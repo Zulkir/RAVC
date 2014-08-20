@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Beholder;
@@ -45,10 +46,12 @@ namespace Ravc.WinHost
             public bool HasTexture { get { return StagingTex != null; } }
         }
 
+        private readonly IHostStatistics statistics;
         private readonly IDevice device;
         private readonly ByteArrayPool byteArrayPool;
         private readonly StagingFrame[] stagingTexChain;
         private readonly int formatId;
+        private readonly Stopwatch stopwatch;
         private IPipelinedConsumer<UncompressedFrame> nextStage;
         private int backIndex;
         private int frontIndex;
@@ -56,12 +59,14 @@ namespace Ravc.WinHost
         public IPipelinedConsumer<UncompressedFrame> NextStage { set { nextStage = value; } }
         public bool IsOverloaded { get { return nextStage.IsOverloaded; } }
 
-        public GpuReadBackStage(IDevice device, ByteArrayPool byteArrayPool, int chainLength)
+        public GpuReadBackStage(IHostStatistics statistics, IDevice device, ByteArrayPool byteArrayPool, int chainLength)
         {
+            this.statistics = statistics;
             this.device = device;
             this.byteArrayPool = byteArrayPool;
             stagingTexChain = new StagingFrame[chainLength];
             formatId = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_UNORM).ID;
+            stopwatch = new Stopwatch();
             frontIndex = 1 % chainLength;
         }
 
@@ -113,6 +118,8 @@ namespace Ravc.WinHost
         {
             var context = device.ImmediateContext;
 
+            stopwatch.Restart();
+
             var frontTex = frontStagingFrame.StagingTex;
             var dataPooled = byteArrayPool.Extract(frontStagingFrame.Info.UncompressedSize);
 
@@ -141,6 +148,9 @@ namespace Ravc.WinHost
                     height /= 2;
                 }
             }
+
+            stopwatch.Stop();
+            statistics.OnReadback(stopwatch.Elapsed.TotalMilliseconds);
 
             var uncompressedFrame = new UncompressedFrame(frontStagingFrame.Info, dataPooled);
             nextStage.Consume(uncompressedFrame);

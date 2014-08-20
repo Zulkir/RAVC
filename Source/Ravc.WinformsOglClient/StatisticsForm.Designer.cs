@@ -49,7 +49,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(13, 13);
+            this.label1.Location = new System.Drawing.Point(12, 9);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(27, 13);
             this.label1.TabIndex = 0;
@@ -58,7 +58,7 @@
             // lbFps
             // 
             this.lbFps.AutoSize = true;
-            this.lbFps.Location = new System.Drawing.Point(141, 13);
+            this.lbFps.Location = new System.Drawing.Point(140, 9);
             this.lbFps.Name = "lbFps";
             this.lbFps.Size = new System.Drawing.Size(35, 13);
             this.lbFps.TabIndex = 1;
@@ -67,7 +67,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(13, 37);
+            this.label2.Location = new System.Drawing.Point(12, 33);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(61, 13);
             this.label2.TabIndex = 2;
@@ -76,7 +76,7 @@
             // lbIdleFrames
             // 
             this.lbIdleFrames.AutoSize = true;
-            this.lbIdleFrames.Location = new System.Drawing.Point(141, 37);
+            this.lbIdleFrames.Location = new System.Drawing.Point(140, 33);
             this.lbIdleFrames.Name = "lbIdleFrames";
             this.lbIdleFrames.Size = new System.Drawing.Size(35, 13);
             this.lbIdleFrames.TabIndex = 3;
@@ -85,7 +85,7 @@
             // lbSkippedFrames
             // 
             this.lbSkippedFrames.AutoSize = true;
-            this.lbSkippedFrames.Location = new System.Drawing.Point(141, 61);
+            this.lbSkippedFrames.Location = new System.Drawing.Point(140, 57);
             this.lbSkippedFrames.Name = "lbSkippedFrames";
             this.lbSkippedFrames.Size = new System.Drawing.Size(35, 13);
             this.lbSkippedFrames.TabIndex = 5;
@@ -94,7 +94,7 @@
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(13, 61);
+            this.label4.Location = new System.Drawing.Point(12, 57);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(83, 13);
             this.label4.TabIndex = 4;
@@ -103,7 +103,7 @@
             // lbTimeBufferingQueue
             // 
             this.lbTimeBufferingQueue.AutoSize = true;
-            this.lbTimeBufferingQueue.Location = new System.Drawing.Point(141, 133);
+            this.lbTimeBufferingQueue.Location = new System.Drawing.Point(140, 129);
             this.lbTimeBufferingQueue.Name = "lbTimeBufferingQueue";
             this.lbTimeBufferingQueue.Size = new System.Drawing.Size(35, 13);
             this.lbTimeBufferingQueue.TabIndex = 7;
@@ -112,7 +112,7 @@
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(13, 133);
+            this.label5.Location = new System.Drawing.Point(12, 129);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(110, 13);
             this.label5.TabIndex = 6;
@@ -121,7 +121,7 @@
             // lbMainThreadQueue
             // 
             this.lbMainThreadQueue.AutoSize = true;
-            this.lbMainThreadQueue.Location = new System.Drawing.Point(141, 157);
+            this.lbMainThreadQueue.Location = new System.Drawing.Point(140, 153);
             this.lbMainThreadQueue.Name = "lbMainThreadQueue";
             this.lbMainThreadQueue.Size = new System.Drawing.Size(35, 13);
             this.lbMainThreadQueue.TabIndex = 9;
@@ -130,7 +130,7 @@
             // label7
             // 
             this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(13, 157);
+            this.label7.Location = new System.Drawing.Point(12, 153);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(102, 13);
             this.label7.TabIndex = 8;
@@ -139,7 +139,7 @@
             // lbCpuProcessingQueue
             // 
             this.lbCpuProcessingQueue.AutoSize = true;
-            this.lbCpuProcessingQueue.Location = new System.Drawing.Point(141, 181);
+            this.lbCpuProcessingQueue.Location = new System.Drawing.Point(140, 177);
             this.lbCpuProcessingQueue.Name = "lbCpuProcessingQueue";
             this.lbCpuProcessingQueue.Size = new System.Drawing.Size(35, 13);
             this.lbCpuProcessingQueue.TabIndex = 11;
@@ -148,7 +148,7 @@
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(13, 181);
+            this.label6.Location = new System.Drawing.Point(12, 177);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(116, 13);
             this.label6.TabIndex = 10;
@@ -157,7 +157,7 @@
             // lbTimeLag
             // 
             this.lbTimeLag.AutoSize = true;
-            this.lbTimeLag.Location = new System.Drawing.Point(141, 85);
+            this.lbTimeLag.Location = new System.Drawing.Point(140, 81);
             this.lbTimeLag.Name = "lbTimeLag";
             this.lbTimeLag.Size = new System.Drawing.Size(35, 13);
             this.lbTimeLag.TabIndex = 13;
@@ -166,7 +166,7 @@
             // label8
             // 
             this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(13, 85);
+            this.label8.Location = new System.Drawing.Point(12, 81);
             this.label8.Name = "label8";
             this.label8.Size = new System.Drawing.Size(51, 13);
             this.label8.TabIndex = 12;
@@ -175,7 +175,7 @@
             // lbGpuUploadTime
             // 
             this.lbGpuUploadTime.AutoSize = true;
-            this.lbGpuUploadTime.Location = new System.Drawing.Point(141, 109);
+            this.lbGpuUploadTime.Location = new System.Drawing.Point(140, 105);
             this.lbGpuUploadTime.Name = "lbGpuUploadTime";
             this.lbGpuUploadTime.Size = new System.Drawing.Size(35, 13);
             this.lbGpuUploadTime.TabIndex = 15;
@@ -184,7 +184,7 @@
             // label9
             // 
             this.label9.AutoSize = true;
-            this.label9.Location = new System.Drawing.Point(13, 109);
+            this.label9.Location = new System.Drawing.Point(12, 105);
             this.label9.Name = "label9";
             this.label9.Size = new System.Drawing.Size(93, 13);
             this.label9.TabIndex = 14;

@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading;
 using Ravc.Encoding;
 using Ravc.Utility.DataStructures;
@@ -31,9 +32,10 @@ namespace Ravc.WinHost
 {
     public class CpuCompressionStage : IPipelineStage<UncompressedFrame, CompressedFrame>
     {
-        private readonly ICpuSideCodec cpuSideCodec;
         private readonly IHostStatistics statistics;
+        private readonly ICpuSideCodec cpuSideCodec;
         private readonly ConcurrentQueue<UncompressedFrame> queue;
+        private readonly Stopwatch stopwatch;
         private IPipelinedConsumer<CompressedFrame> nextStage; 
         private Thread compressorThread;
         private bool isWorking;
@@ -41,11 +43,12 @@ namespace Ravc.WinHost
         public IPipelinedConsumer<CompressedFrame> NextStage { set { nextStage = value; } }
         public bool IsOverloaded { get { return nextStage.IsOverloaded; } }
 
-        public CpuCompressionStage(ICpuSideCodec cpuSideCodec, IHostStatistics statistics)
+        public CpuCompressionStage(IHostStatistics statistics, ICpuSideCodec cpuSideCodec)
         {
             this.cpuSideCodec = cpuSideCodec;
             this.statistics = statistics;
             queue = new ConcurrentQueue<UncompressedFrame>();
+            stopwatch = new Stopwatch();
         }
 
         private void DoWork()
@@ -55,8 +58,11 @@ namespace Ravc.WinHost
                 UncompressedFrame frame;
                 if (queue.TryDequeue(out frame))
                 {
+                    stopwatch.Restart();
                     var compressedFrame = cpuSideCodec.Compress(frame);
-                    statistics.OnNewFrame(frame.Info, compressedFrame.CompressedSize);
+                    stopwatch.Stop();
+                    statistics.OnFrameCompressed(compressedFrame.CompressedSize, stopwatch.ElapsedMilliseconds);
+
                     frame.DataPooled.Release();
                     nextStage.Consume(compressedFrame);
                 }
@@ -69,8 +75,12 @@ namespace Ravc.WinHost
 
         public void Consume(UncompressedFrame input)
         {
+            statistics.OnCpuProcessingQueue(queue.Count);
+
             if (isWorking)
                 queue.Enqueue(input);
+
+            statistics.OnCpuProcessingQueue(queue.Count);
         }
 
         public void Start()

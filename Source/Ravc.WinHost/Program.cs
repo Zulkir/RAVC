@@ -60,7 +60,7 @@ namespace Ravc.WinHost
             var statistics = new HostStatistics();
 
             var eye = new Beholder.Eyes.SharpDX11.Winforms.WinformsEye();
-            var graphicsWindowHandle = eye.CreateNewWindow(1280, 720, "Stream", true);
+            var graphicsWindowHandle = eye.CreateNewWindow(200, 150, "Stream", true);
             var colorFormatInfo = eye.Adapters[0].GetSupportedWindowedDisplayFormats().First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_UNORM);
 #if DEBUG
             var deviceFlags = DeviceInitializationFlags.Debug;
@@ -80,13 +80,13 @@ namespace Ravc.WinHost
                 : new TcpStreamBroadcaster(settings, logger);
             var broadcastingStage = new BroadcastStage(broadcaster);
             var cpuSideCodec = new CpuSideCodec(byteArrayPool, Memory.CopyBulk);
-            var cpuCompressionStage = new CpuCompressionStage(cpuSideCodec, statistics);
-            var gpuReadBackStage = new GpuReadBackStage(device, byteArrayPool, 3);
+            var cpuCompressionStage = new CpuCompressionStage(statistics, cpuSideCodec);
+            var gpuReadBackStage = new GpuReadBackStage(statistics, device, byteArrayPool, 1);
             var debugStage = new DebugStage(device);
             var gpuProcessingStage = new GpuProcessingStage(device);
-            var screenCaptor = new ScreenCaptor9(device);
-            //var screenCaptor = new ScreenCaptor11(logger, device);
-            var mainLoop = new MainLoop(device, screenCaptor);
+            var screenCaptor = new ScreenCaptor9(statistics, device);
+            //var screenCaptor = new ScreenCaptor11(statistics, logger, device);
+            var mainLoop = new MainLoop(statistics, device, screenCaptor);
 
             PipelineBuilder
                 .BeginWith(mainLoop)
@@ -102,10 +102,7 @@ namespace Ravc.WinHost
 
             eye.NewFrame += mainLoop.OnNewFrame;
 
-            statistics.Initialize();
-
-            var settingsForm = new SettingsForm(statistics, eye);
-            settingsForm.Show();
+            statistics.ShowForm();
 
             using (mainLoop)
             using (eye)

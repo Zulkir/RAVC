@@ -29,7 +29,7 @@ namespace Ravc.Utility
          public static int DivideAndCeil(int x, int divisor)
          {
              int floor = x / divisor;
-             return floor * divisor == x ? x : x + 1;
+             return floor * divisor == x ? floor : floor + 1;
          }
     }
 }

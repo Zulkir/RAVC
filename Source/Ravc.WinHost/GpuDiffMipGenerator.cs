@@ -98,9 +98,12 @@ uint4 EncodeDiff(int4 v)
             {
                 var srv = diffTexture.ViewAsShaderResource(formatId, i - 1, 1);
                 var uav = diffTexture.ViewAsUnorderedAccessResource(formatId, i);
+
                 context.ShaderForDispatching = computeShader;
+
                 context.ComputeStage.ShaderResources[0] = srv;
                 context.ComputeStage.UnorderedAccessResources[0] = uav;
+
                 context.Dispatch(RavcMath.DivideAndCeil(diffTexture.Width >> i, 16), RavcMath.DivideAndCeil(diffTexture.Height >> i, 16), 1);
             }
         }
