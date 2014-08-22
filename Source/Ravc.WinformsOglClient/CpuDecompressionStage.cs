@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading;
 using Ravc.Encoding;
 using Ravc.Encoding.Impl;
@@ -37,6 +38,7 @@ namespace Ravc.WinformsOglClient
         private readonly CpuSideCodec cpuSideCodec;
         private readonly ConcurrentQueue<CompressedFrame> queue; 
         private readonly Thread workerThread;
+        private readonly Stopwatch stopwatch;
         private IPipelinedConsumer<UncompressedFrame> nextStage;
         private volatile bool isRunning;
 
@@ -49,6 +51,7 @@ namespace Ravc.WinformsOglClient
             cpuSideCodec = new CpuSideCodec(byteArrayPool, Memory.CopyBulk);
             queue = new ConcurrentQueue<CompressedFrame>();
             workerThread = new Thread(DoWork);
+            stopwatch = new Stopwatch();
         }
 
         public void Consume(CompressedFrame input)
@@ -79,7 +82,10 @@ namespace Ravc.WinformsOglClient
                 if (!nextStage.IsOverloaded && queue.TryDequeue(out compressedFrame))
                 {
                     statistics.OnCpuDecompressionQueue(queue.Count);
+                    stopwatch.Restart();
                     var decompressedFrame = cpuSideCodec.Decompress(compressedFrame);
+                    stopwatch.Stop();
+                    statistics.OnCpuDecoding(stopwatch.Elapsed.TotalMilliseconds);
                     compressedFrame.DataPooled.Release();
                     nextStage.Consume(decompressedFrame);
                 }

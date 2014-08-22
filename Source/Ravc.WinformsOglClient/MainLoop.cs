@@ -22,6 +22,7 @@ THE SOFTWARE.
 */
 #endregion
 
+using System.Diagnostics;
 using ObjectGL;
 using ObjectGL.Api;
 
@@ -35,6 +36,7 @@ namespace Ravc.WinformsOglClient
         private readonly IFinalFrameProvider finalFrameProvider;
         private readonly IClientStatistics statistics;
         private readonly TextureRenderer textureRenderer;
+        private readonly Stopwatch stopwatch;
 
         public MainLoop(IContext context, MyGameWindow gameWindow, IMainThreadBorderStage mainThreadBorderStage, IFinalFrameProvider finalFrameProvider, IClientStatistics statistics)
         {
@@ -44,6 +46,7 @@ namespace Ravc.WinformsOglClient
             this.finalFrameProvider = finalFrameProvider;
             this.statistics = statistics;
             textureRenderer = new TextureRenderer(context);
+            stopwatch = new Stopwatch();
         }
 
         public void OnNewFrame(double elapsedTime, double totalRealTime)
@@ -56,7 +59,10 @@ namespace Ravc.WinformsOglClient
 
             statistics.OnFrameRendered(elapsedTime);
 
+            stopwatch.Restart();
             context.SwapBuffers();
+            stopwatch.Stop();
+            statistics.OnSwapChain(stopwatch.Elapsed.TotalMilliseconds);
         }
     }
 }

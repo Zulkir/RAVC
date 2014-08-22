@@ -181,7 +181,8 @@ namespace Ravc.WinHost
             d3dTexture.Dispose();
             textureAwaitsProcessing = false;
 
-            var frameInfo = new FrameInfo(frameType, (float)dxgiFrameInfo.LastPresentTime / Stopwatch.Frequency, clientRectangle.Width, clientRectangle.Height);
+            var timestamp = (float)dxgiFrameInfo.LastPresentTime / Stopwatch.Frequency;
+            var frameInfo = new FrameInfo(frameType, (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency, clientRectangle.Width, clientRectangle.Height);
             capturedFrame = new GpuRawFrame(frameInfo, resultPooled);
 
             return true;

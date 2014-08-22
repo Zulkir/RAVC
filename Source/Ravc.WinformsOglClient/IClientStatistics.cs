@@ -33,5 +33,8 @@ namespace Ravc.WinformsOglClient
         void OnTimeBufferQueue(int queueCount);
         void OnMainThreadQueue(int queueCount);
         void OnCpuDecompressionQueue(int queueCount);
+        void OnSwapChain(double time);
+        void OnBorderPass(double time);
+        void OnCpuDecoding(double time);
     }
 }

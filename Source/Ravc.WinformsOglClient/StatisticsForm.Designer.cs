@@ -44,6 +44,12 @@
             this.label8 = new System.Windows.Forms.Label();
             this.lbGpuUploadTime = new System.Windows.Forms.Label();
             this.label9 = new System.Windows.Forms.Label();
+            this.lbCpuDecodingTime = new System.Windows.Forms.Label();
+            this.label10 = new System.Windows.Forms.Label();
+            this.lbBorderPassTime = new System.Windows.Forms.Label();
+            this.label11 = new System.Windows.Forms.Label();
+            this.lbPresentTime = new System.Windows.Forms.Label();
+            this.label3 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // label1
@@ -103,7 +109,7 @@
             // lbTimeBufferingQueue
             // 
             this.lbTimeBufferingQueue.AutoSize = true;
-            this.lbTimeBufferingQueue.Location = new System.Drawing.Point(140, 129);
+            this.lbTimeBufferingQueue.Location = new System.Drawing.Point(140, 201);
             this.lbTimeBufferingQueue.Name = "lbTimeBufferingQueue";
             this.lbTimeBufferingQueue.Size = new System.Drawing.Size(35, 13);
             this.lbTimeBufferingQueue.TabIndex = 7;
@@ -112,7 +118,7 @@
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(12, 129);
+            this.label5.Location = new System.Drawing.Point(12, 201);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(110, 13);
             this.label5.TabIndex = 6;
@@ -121,7 +127,7 @@
             // lbMainThreadQueue
             // 
             this.lbMainThreadQueue.AutoSize = true;
-            this.lbMainThreadQueue.Location = new System.Drawing.Point(140, 153);
+            this.lbMainThreadQueue.Location = new System.Drawing.Point(140, 225);
             this.lbMainThreadQueue.Name = "lbMainThreadQueue";
             this.lbMainThreadQueue.Size = new System.Drawing.Size(35, 13);
             this.lbMainThreadQueue.TabIndex = 9;
@@ -130,7 +136,7 @@
             // label7
             // 
             this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(12, 153);
+            this.label7.Location = new System.Drawing.Point(12, 225);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(102, 13);
             this.label7.TabIndex = 8;
@@ -139,7 +145,7 @@
             // lbCpuProcessingQueue
             // 
             this.lbCpuProcessingQueue.AutoSize = true;
-            this.lbCpuProcessingQueue.Location = new System.Drawing.Point(140, 177);
+            this.lbCpuProcessingQueue.Location = new System.Drawing.Point(140, 249);
             this.lbCpuProcessingQueue.Name = "lbCpuProcessingQueue";
             this.lbCpuProcessingQueue.Size = new System.Drawing.Size(35, 13);
             this.lbCpuProcessingQueue.TabIndex = 11;
@@ -148,7 +154,7 @@
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(12, 177);
+            this.label6.Location = new System.Drawing.Point(12, 249);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(116, 13);
             this.label6.TabIndex = 10;
@@ -175,7 +181,7 @@
             // lbGpuUploadTime
             // 
             this.lbGpuUploadTime.AutoSize = true;
-            this.lbGpuUploadTime.Location = new System.Drawing.Point(140, 105);
+            this.lbGpuUploadTime.Location = new System.Drawing.Point(140, 129);
             this.lbGpuUploadTime.Name = "lbGpuUploadTime";
             this.lbGpuUploadTime.Size = new System.Drawing.Size(35, 13);
             this.lbGpuUploadTime.TabIndex = 15;
@@ -184,17 +190,77 @@
             // label9
             // 
             this.label9.AutoSize = true;
-            this.label9.Location = new System.Drawing.Point(12, 105);
+            this.label9.Location = new System.Drawing.Point(12, 129);
             this.label9.Name = "label9";
             this.label9.Size = new System.Drawing.Size(93, 13);
             this.label9.TabIndex = 14;
             this.label9.Text = "GPU Upload Time";
             // 
+            // lbCpuDecodingTime
+            // 
+            this.lbCpuDecodingTime.AutoSize = true;
+            this.lbCpuDecodingTime.Location = new System.Drawing.Point(140, 177);
+            this.lbCpuDecodingTime.Name = "lbCpuDecodingTime";
+            this.lbCpuDecodingTime.Size = new System.Drawing.Size(35, 13);
+            this.lbCpuDecodingTime.TabIndex = 17;
+            this.lbCpuDecodingTime.Text = "label3";
+            // 
+            // label10
+            // 
+            this.label10.AutoSize = true;
+            this.label10.Location = new System.Drawing.Point(12, 177);
+            this.label10.Name = "label10";
+            this.label10.Size = new System.Drawing.Size(105, 13);
+            this.label10.TabIndex = 16;
+            this.label10.Text = "CPU Decoding TIme";
+            // 
+            // lbBorderPassTime
+            // 
+            this.lbBorderPassTime.AutoSize = true;
+            this.lbBorderPassTime.Location = new System.Drawing.Point(140, 153);
+            this.lbBorderPassTime.Name = "lbBorderPassTime";
+            this.lbBorderPassTime.Size = new System.Drawing.Size(35, 13);
+            this.lbBorderPassTime.TabIndex = 19;
+            this.lbBorderPassTime.Text = "label3";
+            // 
+            // label11
+            // 
+            this.label11.AutoSize = true;
+            this.label11.Location = new System.Drawing.Point(12, 153);
+            this.label11.Name = "label11";
+            this.label11.Size = new System.Drawing.Size(90, 13);
+            this.label11.TabIndex = 18;
+            this.label11.Text = "Border Pass Time";
+            // 
+            // lbPresentTime
+            // 
+            this.lbPresentTime.AutoSize = true;
+            this.lbPresentTime.Location = new System.Drawing.Point(140, 105);
+            this.lbPresentTime.Name = "lbPresentTime";
+            this.lbPresentTime.Size = new System.Drawing.Size(35, 13);
+            this.lbPresentTime.TabIndex = 21;
+            this.lbPresentTime.Text = "label3";
+            // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(12, 105);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(69, 13);
+            this.label3.TabIndex = 20;
+            this.label3.Text = "Present Time";
+            // 
             // StatisticsForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(244, 211);
+            this.ClientSize = new System.Drawing.Size(244, 294);
+            this.Controls.Add(this.lbPresentTime);
+            this.Controls.Add(this.label3);
+            this.Controls.Add(this.lbBorderPassTime);
+            this.Controls.Add(this.label11);
+            this.Controls.Add(this.lbCpuDecodingTime);
+            this.Controls.Add(this.label10);
             this.Controls.Add(this.lbGpuUploadTime);
             this.Controls.Add(this.label9);
             this.Controls.Add(this.lbTimeLag);
@@ -238,5 +304,11 @@
         public System.Windows.Forms.Label label8;
         public System.Windows.Forms.Label lbGpuUploadTime;
         public System.Windows.Forms.Label label9;
+        public System.Windows.Forms.Label lbCpuDecodingTime;
+        public System.Windows.Forms.Label label10;
+        public System.Windows.Forms.Label lbBorderPassTime;
+        public System.Windows.Forms.Label label11;
+        public System.Windows.Forms.Label lbPresentTime;
+        public System.Windows.Forms.Label label3;
     }
 }

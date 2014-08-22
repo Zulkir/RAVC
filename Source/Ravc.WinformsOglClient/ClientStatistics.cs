@@ -32,7 +32,10 @@ namespace Ravc.WinformsOglClient
         private readonly StatisticsForm form;
         private readonly StatCounter frameTime;
         private readonly StatCounter timeLag;
+        private readonly StatCounter presentTime;
         private readonly StatCounter gpuUploadTime;
+        private readonly StatCounter borderPassTime;
+        private readonly StatCounter cpuDecodingTime;
         private readonly StatCounter timeBufferingQueue;
         private readonly StatCounter mainThreadBarrierQueue;
         private readonly StatCounter cpuProcessingQueue;
@@ -48,7 +51,10 @@ namespace Ravc.WinformsOglClient
 
             frameTime = new StatCounter();
             timeLag = new StatCounter();
+            presentTime = new StatCounter();
             gpuUploadTime = new StatCounter();
+            borderPassTime = new StatCounter();
+            cpuDecodingTime = new StatCounter();
             timeBufferingQueue = new StatCounter();
             mainThreadBarrierQueue = new StatCounter();
             cpuProcessingQueue = new StatCounter();
@@ -75,14 +81,20 @@ namespace Ravc.WinformsOglClient
                 form.lbIdleFrames.Text = FormatValue(idleFrames);
                 form.lbSkippedFrames.Text = FormatValue(skippedFrames);
                 form.lbTimeLag.Text = FormatMinMax(timeLag);
-                form.lbGpuUploadTime.Text = FormatValue(gpuUploadTime.Average, 1);
-                form.lbTimeBufferingQueue.Text = FormatMinMax(timeBufferingQueue);
-                form.lbMainThreadQueue.Text = FormatMinMax(mainThreadBarrierQueue);
-                form.lbCpuProcessingQueue.Text = FormatMinMax(cpuProcessingQueue);
+                form.lbPresentTime.Text = FormatMinMax(presentTime);
+                form.lbGpuUploadTime.Text = FormatMinMax(gpuUploadTime);
+                form.lbBorderPassTime.Text = FormatMinMax(borderPassTime);
+                form.lbCpuDecodingTime.Text = FormatMinMax(cpuDecodingTime);
+                form.lbTimeBufferingQueue.Text = FormatQueue(timeBufferingQueue);
+                form.lbMainThreadQueue.Text = FormatQueue(mainThreadBarrierQueue);
+                form.lbCpuProcessingQueue.Text = FormatQueue(cpuProcessingQueue);
 
                 frameTime.Reset();
                 timeLag.Reset();
+                presentTime.Reset();
                 gpuUploadTime.Reset();
+                borderPassTime.Reset();
+                cpuDecodingTime.Reset();
                 timeBufferingQueue.Reset();
                 mainThreadBarrierQueue.Reset();
                 cpuProcessingQueue.Reset();
@@ -95,7 +107,12 @@ namespace Ravc.WinformsOglClient
 
         private static string FormatMinMax(StatCounter statCounter)
         {
-            return string.Format("{0}--{1}", FormatValue(statCounter.Min), FormatValue(statCounter.Max));
+            return string.Format("{0:0.#}--{1:0.#}   ({2:0.##})", statCounter.Min, statCounter.Max, statCounter.Average);
+        }
+
+        private static string FormatQueue(StatCounter statCounter)
+        {
+            return string.Format("{0:0}--{1:0}   ({2:0.#})", statCounter.Min, statCounter.Max, statCounter.Average);
         }
 
         private static string FormatValue(double value, int decimals = 0)
@@ -113,9 +130,24 @@ namespace Ravc.WinformsOglClient
             timeLag.AddValue(lag * 1000);
         }
 
+        public void OnSwapChain(double time)
+        {
+            presentTime.AddValue(time);
+        }
+
         public void OnGpuUpload(double uploadTime)
         {
             gpuUploadTime.AddValue(uploadTime);
+        }
+
+        public void OnBorderPass(double time)
+        {
+            borderPassTime.AddValue(time);
+        }
+
+        public void OnCpuDecoding(double time)
+        {
+            cpuDecodingTime.AddValue(time);
         }
 
         public void OnTimeBufferQueue(int queueCount)

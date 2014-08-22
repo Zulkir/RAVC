@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using Ravc.Encoding;
 using Ravc.Utility.DataStructures;
 
@@ -32,15 +33,17 @@ namespace Ravc.WinformsOglClient
     {
         private readonly IClientStatistics statistics;
         private readonly ConcurrentQueue<UncompressedFrame> queue;
+        private readonly Stopwatch stopwatch;
         private IPipelinedConsumer<UncompressedFrame> nextStage;
 
         public IPipelinedConsumer<UncompressedFrame> NextStage { set { nextStage = value; } }
-        public bool IsOverloaded { get { return queue.Count > 20; } }
+        public bool IsOverloaded { get { return queue.Count > 7; } }
 
         public MainThreadBorderStage(IClientStatistics statistics)
         {
             this.statistics = statistics;
             queue = new ConcurrentQueue<UncompressedFrame>();
+            stopwatch = new Stopwatch();
         }
 
         public void Consume(UncompressedFrame input)
@@ -55,12 +58,15 @@ namespace Ravc.WinformsOglClient
                 return;
 
             statistics.OnMainThreadQueue(queue.Count);
+            stopwatch.Restart();
             for (int i = 0; i < 3; i++)
             {
                 UncompressedFrame uncompressedFrame;
                 if (!nextStage.IsOverloaded && queue.TryDequeue(out uncompressedFrame))
                     nextStage.Consume(uncompressedFrame);
             }
+            stopwatch.Stop();
+            statistics.OnBorderPass(stopwatch.Elapsed.TotalMilliseconds);
             statistics.OnMainThreadQueue(queue.Count);
         }
     }
