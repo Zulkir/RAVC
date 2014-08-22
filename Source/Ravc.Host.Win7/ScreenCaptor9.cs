@@ -37,7 +37,7 @@ using SharpDX.Direct3D9;
 using Rectangle = SharpDX.Rectangle;
 using Usage = Beholder.Resources.Usage;
 
-namespace Ravc.WinHost
+namespace Ravc.Host.Win7
 {
     public class ScreenCaptor9 : IScreenCaptor
     {

@@ -37,13 +37,13 @@ using Ravc.Host.WinLib;
 using Ravc.Infrastructure;
 using SharpDX.DXGI;
 using SharpDX.Direct3D11;
-using FormatSupport = Beholder.Platform.FormatSupport;
-using Resource = SharpDX.DXGI.Resource;
 using System.Linq;
 using BindFlags = Beholder.Resources.BindFlags;
+using FormatSupport = Beholder.Platform.FormatSupport;
+using Resource = SharpDX.DXGI.Resource;
 using Usage = Beholder.Resources.Usage;
 
-namespace Ravc.WinHost
+namespace Ravc.Host.Win8
 {
     public class ScreenCaptor11 : IScreenCaptor
     {

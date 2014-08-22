@@ -34,7 +34,7 @@ using Ravc.Streaming;
 using Ravc.Utility;
 using Ravc.Utility.DataStructures;
 
-namespace Ravc.WinHost
+namespace Ravc.Host.Win8
 {
     static class Program
     {

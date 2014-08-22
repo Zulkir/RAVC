@@ -34,7 +34,7 @@ using Ravc.Streaming;
 using Ravc.Utility;
 using Ravc.Utility.DataStructures;
 
-namespace Ravc.WinHost
+namespace Ravc.Host.Win7
 {
     static class Program
     {
@@ -85,8 +85,7 @@ namespace Ravc.WinHost
             var gpuReadBackStage = new GpuReadBackStage(statistics, device, byteArrayPool, 1);
             var debugStage = new DebugStage(device);
             var gpuProcessingStage = new GpuProcessingStage(device);
-            //var screenCaptor = new ScreenCaptor9(statistics, device);
-            var screenCaptor = new ScreenCaptor11(statistics, logger, device);
+            var screenCaptor = new ScreenCaptor9(statistics, device);
             var mainLoop = new MainLoop(statistics, device, screenCaptor);
 
             PipelineBuilder

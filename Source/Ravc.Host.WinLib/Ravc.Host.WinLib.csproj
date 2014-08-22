@@ -4,16 +4,15 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{3F00F416-5DBC-404F-A93E-A1BBAE1C1C4C}</ProjectGuid>
-    <OutputType>WinExe</OutputType>
+    <ProjectGuid>{00BF0EB7-50F5-4867-9A35-E0CD926BED27}</ProjectGuid>
+    <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Ravc.WinHost</RootNamespace>
-    <AssemblyName>Ravc.WinHost</AssemblyName>
+    <RootNamespace>Ravc.Host.WinLib</RootNamespace>
+    <AssemblyName>Ravc.Host.WinLib</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -21,98 +20,93 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <UseVSHostingProcess>true</UseVSHostingProcess>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>..\..\Build\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <UseVSHostingProcess>true</UseVSHostingProcess>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Beholder">
+    <Reference Include="Beholder, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\Dependencies\Beholder.dll</HintPath>
     </Reference>
-    <Reference Include="Beholder.Eyes.SharpDX11.Winforms">
-      <HintPath>..\..\Dependencies\Beholder.Eyes.SharpDX11.Winforms.dll</HintPath>
-    </Reference>
-    <Reference Include="Beholder.Libraries.SharpDX11">
+    <Reference Include="Beholder.Libraries.SharpDX11, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\Dependencies\Beholder.Libraries.SharpDX11.dll</HintPath>
     </Reference>
-    <Reference Include="SharpDX">
+    <Reference Include="SharpDX, Version=2.6.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\Dependencies\SharpDX.dll</HintPath>
     </Reference>
-    <Reference Include="SharpDX.Direct3D11, Version=2.3.1.0, Culture=neutral, PublicKeyToken=627a3d6d1956f55a, processorArchitecture=MSIL">
+    <Reference Include="SharpDX.Direct3D11, Version=2.6.2.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\Dependencies\SharpDX.Direct3D11.dll</HintPath>
     </Reference>
-    <Reference Include="SharpDX.Direct3D9">
-      <HintPath>..\..\Dependencies\SharpDX.Direct3D9.dll</HintPath>
-    </Reference>
-    <Reference Include="SharpDX.DXGI, Version=2.3.1.0, Culture=neutral, PublicKeyToken=627a3d6d1956f55a, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Dependencies\SharpDX.DXGI.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
-    <Reference Include="System.Deployment" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
-    <Reference Include="Win32">
+    <Reference Include="Win32, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\Dependencies\Win32.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ScreenCaptor11.cs" />
-    <Compile Include="Program.cs" />
+    <Compile Include="BroadcastStage.cs" />
+    <Compile Include="CpuCompressionStage.cs" />
+    <Compile Include="DebugStage.cs" />
+    <Compile Include="FileLogger.cs" />
+    <Compile Include="FileStreamBroadcaster.cs" />
+    <Compile Include="FullScreenQuadRendererBase.cs" />
+    <Compile Include="GpuChannelSwapper.cs" />
+    <Compile Include="GpuDiffMipGenerator.cs" />
+    <Compile Include="GpuEncodedFrame.cs" />
+    <Compile Include="GpuProcessingStage.cs" />
+    <Compile Include="GpuRawFrame.cs" />
+    <Compile Include="GpuReadBackStage.cs" />
+    <Compile Include="GpuSpatialDiffCalculator.cs" />
+    <Compile Include="GpuTemporalDiffCalculator.cs" />
+    <Compile Include="HostSettings.cs" />
+    <Compile Include="HostStatistics.cs" />
+    <Compile Include="IHostSettings.cs" />
+    <Compile Include="IHostStatistics.cs" />
+    <Compile Include="IScreenCaptor.cs" />
+    <Compile Include="MainLoop.cs" />
+    <Compile Include="Memory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ScreenCaptor9.cs" />
-    <EmbeddedResource Include="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <Compile Include="Properties\Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
+    <Compile Include="StatisticsForm.cs">
+      <SubType>Form</SubType>
     </Compile>
-    <None Include="Properties\Settings.settings">
-      <Generator>SettingsSingleFileGenerator</Generator>
-      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </None>
-    <Compile Include="Properties\Settings.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Settings.settings</DependentUpon>
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    <Compile Include="StatisticsForm.Designer.cs">
+      <DependentUpon>StatisticsForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="StreamExtensions.cs" />
+    <Compile Include="TcpStreamBroadcaster.cs" />
+    <Compile Include="TcpStreamBroadcasterClientProcessor.cs" />
+    <Compile Include="TexturePool.cs" />
+    <Compile Include="TextureRenderer.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Ravc.Host.WinLib\Ravc.Host.WinLib.csproj">
-      <Project>{00bf0eb7-50f5-4867-9a35-e0cd926bed27}</Project>
-      <Name>Ravc.Host.WinLib</Name>
-    </ProjectReference>
+    <EmbeddedResource Include="StatisticsForm.resx">
+      <DependentUpon>StatisticsForm.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Ravc\Ravc.csproj">
       <Project>{c5d001c5-907c-4c4c-875a-f73ae3f6513f}</Project>
       <Name>Ravc</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="d3dcompiler_47.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
