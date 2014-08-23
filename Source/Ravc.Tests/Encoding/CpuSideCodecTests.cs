@@ -27,6 +27,7 @@ using System.Linq;
 using NUnit.Framework;
 using Ravc.Encoding;
 using Ravc.Encoding.Impl;
+using Ravc.Pcl;
 using Ravc.Utility;
 
 namespace Ravc.Tests.Encoding
@@ -34,6 +35,27 @@ namespace Ravc.Tests.Encoding
     [TestFixture]
     public class CpuSideCodecTests
     {
+        private class PckWorkaroundsMock : IPclWorkarounds
+        {
+            public unsafe void CopyBulk(IntPtr dst, IntPtr src, int length)
+            {
+                while (length >= sizeof(long))
+                {
+                    *(long*)dst = *(long*)src;
+                    dst += sizeof(long);
+                    src += sizeof(long);
+                    length -= sizeof(long);
+                }
+                while (length > 0)
+                {
+                    *(byte*)dst = *(byte*)src;
+                    dst += 1;
+                    src += 1;
+                    length--;
+                }
+            }
+        }
+
         private Random random;
         private ByteArrayPool byteArrayPool;
         private CpuSideCodec codec;
@@ -42,26 +64,9 @@ namespace Ravc.Tests.Encoding
         public void SetUp()
         {
             byteArrayPool = new ByteArrayPool();
-            codec = new CpuSideCodec(byteArrayPool, NaiveCpblk);
+            var pclWorkarounds = new PckWorkaroundsMock();
+            codec = new CpuSideCodec(pclWorkarounds, byteArrayPool);
             random = new Random(234234);
-        }
-
-        private static unsafe void NaiveCpblk(IntPtr dst, IntPtr src, int length)
-        {
-            while (length >= sizeof(long))
-            {
-                *(long*)dst = *(long*)src;
-                dst += sizeof(long);
-                src += sizeof(long);
-                length -= sizeof(long);
-            }
-            while (length > 0)
-            {
-                *(byte*)dst = *(byte*)src;
-                dst += 1;
-                src += 1;
-                length--;
-            }
         }
 
         private uint GetRandomPixel()

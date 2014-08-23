@@ -5,13 +5,15 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ravc.Tests", "Ravc.Tests\Ra
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ravc", "Ravc\Ravc.csproj", "{C5D001C5-907C-4C4C-875A-F73AE3F6513F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ravc.WinformsOglClient", "Ravc.WinformsOglClient\Ravc.WinformsOglClient.csproj", "{9CE96573-A78B-4BEF-8E06-06AC4DDAF05E}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ravc.Host.WinLib", "Ravc.Host.WinLib\Ravc.Host.WinLib.csproj", "{00BF0EB7-50F5-4867-9A35-E0CD926BED27}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ravc.Host.Win7", "Ravc.Host.Win7\Ravc.Host.Win7.csproj", "{E758A155-7445-48DC-BA67-EB8F5411B7E8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ravc.Host.Win8", "Ravc.Host.Win8\Ravc.Host.Win8.csproj", "{27F138BB-EA20-43E4-8BF4-F25B43145809}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ravc.Client.OglLib", "Ravc.Client.OglLib\Ravc.Client.OglLib.csproj", "{94148416-BA24-4E5E-980E-57E415308984}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ravc.Client.OglDesktop", "Ravc.Client.OglDesktop\Ravc.Client.OglDesktop.csproj", "{20A025E5-AAF9-483C-A9A7-7DC497B4EA7F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,10 +29,6 @@ Global
 		{C5D001C5-907C-4C4C-875A-F73AE3F6513F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C5D001C5-907C-4C4C-875A-F73AE3F6513F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C5D001C5-907C-4C4C-875A-F73AE3F6513F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9CE96573-A78B-4BEF-8E06-06AC4DDAF05E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9CE96573-A78B-4BEF-8E06-06AC4DDAF05E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9CE96573-A78B-4BEF-8E06-06AC4DDAF05E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9CE96573-A78B-4BEF-8E06-06AC4DDAF05E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{00BF0EB7-50F5-4867-9A35-E0CD926BED27}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{00BF0EB7-50F5-4867-9A35-E0CD926BED27}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{00BF0EB7-50F5-4867-9A35-E0CD926BED27}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -43,6 +41,14 @@ Global
 		{27F138BB-EA20-43E4-8BF4-F25B43145809}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{27F138BB-EA20-43E4-8BF4-F25B43145809}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{27F138BB-EA20-43E4-8BF4-F25B43145809}.Release|Any CPU.Build.0 = Release|Any CPU
+		{94148416-BA24-4E5E-980E-57E415308984}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{94148416-BA24-4E5E-980E-57E415308984}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{94148416-BA24-4E5E-980E-57E415308984}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{94148416-BA24-4E5E-980E-57E415308984}.Release|Any CPU.Build.0 = Release|Any CPU
+		{20A025E5-AAF9-483C-A9A7-7DC497B4EA7F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{20A025E5-AAF9-483C-A9A7-7DC497B4EA7F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{20A025E5-AAF9-483C-A9A7-7DC497B4EA7F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{20A025E5-AAF9-483C-A9A7-7DC497B4EA7F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

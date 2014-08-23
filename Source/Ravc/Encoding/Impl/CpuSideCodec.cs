@@ -26,6 +26,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Ravc.Encoding.Transforms;
+using Ravc.Pcl;
 using Ravc.Utility;
 
 namespace Ravc.Encoding.Impl
@@ -56,17 +57,17 @@ namespace Ravc.Encoding.Impl
         private const int PartOffsetsTableSize = PartCount * sizeof(int);
         private const int HeaderSize = CompressedFrameInfo.Size + PartOffsetsTableSize;
 
+        private readonly IPclWorkarounds pclWorkarounds;
         private readonly ByteArrayPool byteArrayPool;
-        private readonly Action<IntPtr, IntPtr, int> cpblk;
         private readonly Pool<PartInfo[]> partInfoArrayPool;
         private readonly byte[] blockEncodingWriteLut;
         private readonly byte[] blockEncodingReadLut;
         private readonly byte[] dottedEncodingReadLut;
 
-        public CpuSideCodec(ByteArrayPool byteArrayPool, Action<IntPtr, IntPtr, int> cpblk)
+        public CpuSideCodec(IPclWorkarounds pclWorkarounds, ByteArrayPool byteArrayPool)
         {
+            this.pclWorkarounds = pclWorkarounds;
             this.byteArrayPool = byteArrayPool;
-            this.cpblk = cpblk;
 
             partInfoArrayPool = new Pool<PartInfo[]>(() => new PartInfo[PartCount]);
 
@@ -197,7 +198,7 @@ namespace Ravc.Encoding.Impl
             for (int i = 0; i < PartCount; i++)
             {
                 var part = partInfos[i];
-                cpblk((IntPtr)result + HeaderSize + partOffsetsTable[i], (IntPtr)part.Auxiliary, compressedPartSizesTable[i]);
+                pclWorkarounds.CopyBulk((IntPtr)result + HeaderSize + partOffsetsTable[i], (IntPtr)part.Auxiliary, compressedPartSizesTable[i]);
             }
         }
         #endregion

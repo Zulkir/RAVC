@@ -71,6 +71,7 @@ namespace Ravc.Host.Win7
             eye.Initialize(eye.Adapters[0], graphicsWindowHandle, new SwapChainDescription(2, colorFormatInfo.ID, false, 0, Sampling.NoMultisampling, true), deviceFlags, new StraightforwardFileSystem());
             var device = eye.Device;
 
+            var pclWorkarounds = new PclWorkarounds();
             var byteArrayPool = new ByteArrayPool();
 
             var logger = new FileLogger();
@@ -80,7 +81,7 @@ namespace Ravc.Host.Win7
                 ? (IStreamBroadcaster)new FileStreamBroadcaster() 
                 : new TcpStreamBroadcaster(settings, logger);
             var broadcastingStage = new BroadcastStage(broadcaster);
-            var cpuSideCodec = new CpuSideCodec(byteArrayPool, Memory.CopyBulk);
+            var cpuSideCodec = new CpuSideCodec(pclWorkarounds, byteArrayPool);
             var cpuCompressionStage = new CpuCompressionStage(statistics, cpuSideCodec);
             var gpuReadBackStage = new GpuReadBackStage(statistics, device, byteArrayPool, 1);
             var debugStage = new DebugStage(device);
