@@ -22,6 +22,7 @@ THE SOFTWARE.
 */
 #endregion
 
+using System.Diagnostics;
 using System.Globalization;
 using Ravc.Utility;
 
@@ -40,6 +41,7 @@ namespace Ravc.Client.OglLib
         private readonly StatCounter mainThreadBarrierQueue;
         private readonly StatCounter cpuProcessingQueue;
 
+        private double previousTimeStamp;
         private int frames;
         private int timedFrames;
         private int idleFrames;
@@ -60,9 +62,11 @@ namespace Ravc.Client.OglLib
             cpuProcessingQueue = new StatCounter();
         }
 
-        public void OnFrameRendered(double elapsedSeconds)
+        public void OnFrameRendered()
         {
-            frameTime.AddValue(elapsedSeconds);
+            var currentTimestamp = (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency;
+            frameTime.AddValue(currentTimestamp - previousTimeStamp);
+            previousTimeStamp = currentTimestamp;
 
             if (timedFrames == 0)
                 idleFrames++;
@@ -70,7 +74,7 @@ namespace Ravc.Client.OglLib
                 skippedFrames += timedFrames - 1;
 
             frames++;
-            if (frames % 16 == 0)
+            if (frameTime.Accumulated > 0.25f)
             {
                 renderer.Fps = FormatValue(1.0 / frameTime.Average);
                 renderer.IdleFrames = FormatValue(idleFrames);

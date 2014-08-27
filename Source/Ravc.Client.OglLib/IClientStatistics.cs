@@ -26,7 +26,7 @@ namespace Ravc.Client.OglLib
 {
     public interface IClientStatistics
     {
-        void OnFrameRendered(double elapsedSeconds);
+        void OnFrameRendered();
         void OnTimedFrameExtracted();
         void OnTimeLag(double lag);
         void OnGpuUpload(double uploadTime);

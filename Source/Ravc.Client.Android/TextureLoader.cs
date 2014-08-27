@@ -22,22 +22,35 @@ THE SOFTWARE.
 */
 #endregion
 
+using Android.Content.Res;
+using Android.Graphics;
+using Android.Opengl;
+using ObjectGL.Api;
+using ObjectGL.Api.Objects.Resources;
 using Ravc.Client.OglLib;
+using Format = ObjectGL.Api.Objects.Resources.Format;
 
 namespace Ravc.Client.Android
 {
-    public class ClientStatisticsRenderer : IClientStatisticsRenderer
+    public class TextureLoader : ITextureLoader
     {
-        public string Fps { set; private get; }
-        public string IdleFrames { set; private get; }
-        public string SkippedFrames { set; private get; }
-        public string TimeLag { set; private get; }
-        public string PresentTime { set; private get; }
-        public string GpuUploadTime { set; private get; }
-        public string BorderPassTime { set; private get; }
-        public string CpuDecodingTime { set; private get; }
-        public string TimeBufferingQueue { set; private get; }
-        public string MainThreadQueue { set; private get; }
-        public string CpuProcessingQueue { set; private get; }
+        private readonly AssetManager assetManager;
+
+        public TextureLoader(AssetManager assetManager)
+        {
+            this.assetManager = assetManager;
+        }
+
+        public ITexture2D LoadTexture(IContext context, string name)
+        {
+            Bitmap bitmap;
+            using (var stream = assetManager.Open("DebugFont.png"))
+            {
+                bitmap = BitmapFactory.DecodeStream(stream);
+            }
+            var texture = context.Create.Texture2D(bitmap.Width, bitmap.Height, 1, Format.Rgba8);
+            GLUtils.TexSubImage2D((int)TextureTarget.Texture2D, 0, 0, 0, bitmap);
+            return texture;
+        }
     }
 }

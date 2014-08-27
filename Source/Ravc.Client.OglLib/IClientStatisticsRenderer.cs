@@ -22,6 +22,8 @@ THE SOFTWARE.
 */
 #endregion
 
+using ObjectGL.Api;
+
 namespace Ravc.Client.OglLib
 {
     public interface IClientStatisticsRenderer
@@ -37,5 +39,7 @@ namespace Ravc.Client.OglLib
         string TimeBufferingQueue { set; }
         string MainThreadQueue { set; }
         string CpuProcessingQueue { set; }
+
+        void Render(IContext context);
     }
 }

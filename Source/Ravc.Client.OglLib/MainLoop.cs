@@ -37,15 +37,17 @@ namespace Ravc.Client.OglLib
         private readonly IFinalFrameProvider finalFrameProvider;
         private readonly IClientStatistics statistics;
         private readonly TextureRenderer textureRenderer;
+        private readonly IClientStatisticsRenderer statisticsRenderer;
         private readonly Stopwatch stopwatch;
 
-        public MainLoop(IPclWorkarounds pclWorkarounds, IClientStatistics statistics, IClientSettings settings, IContext context, IRavcGameWindow gameWindow, IMainThreadBorderStage mainThreadBorderStage, IFinalFrameProvider finalFrameProvider)
+        public MainLoop(IPclWorkarounds pclWorkarounds, IClientStatistics statistics, IClientSettings settings, IContext context, IRavcGameWindow gameWindow, IMainThreadBorderStage mainThreadBorderStage, IFinalFrameProvider finalFrameProvider, IClientStatisticsRenderer statisticsRenderer)
         {
             this.context = context;
             this.statistics = statistics;
             this.gameWindow = gameWindow;
             this.mainThreadBorderStage = mainThreadBorderStage;
             this.finalFrameProvider = finalFrameProvider;
+            this.statisticsRenderer = statisticsRenderer;
             textureRenderer = new TextureRenderer(pclWorkarounds, settings, context);
             stopwatch = new Stopwatch();
         }
@@ -58,7 +60,9 @@ namespace Ravc.Client.OglLib
             var textureToRender = finalFrameProvider.GetTextureToRender();
             textureRenderer.Render(context, textureToRender, gameWindow.ClientWidth, gameWindow.ClientHeight);
 
-            statistics.OnFrameRendered(elapsedTime);
+            statisticsRenderer.Render(context);
+
+            statistics.OnFrameRendered();
 
             stopwatch.Restart();
             context.SwapBuffers();

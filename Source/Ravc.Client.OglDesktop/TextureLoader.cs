@@ -22,39 +22,27 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.IO;
-using System.Net.Sockets;
-using System.Threading;
-using Ravc.Client.OglLib.Pcl;
+using System.Drawing;
+using System.Drawing.Imaging;
+using ObjectGL.Api;
+using ObjectGL.Api.Objects.Resources;
+using Ravc.Client.OglLib;
 
 namespace Ravc.Client.OglDesktop
 {
-    public class PclWorkarounds : IPclWorkarounds
+    public class TextureLoader : ITextureLoader
     {
-        public void CopyBulk(IntPtr destination, IntPtr source, int numBytes)
+        public ITexture2D LoadTexture(IContext context, string name)
         {
-            Memory.CopyBulk(destination, source, numBytes);
-        }
-
-        public IPclThread CreateThread(Action threadProc)
-        {
-            return new PclThread(new Thread(() => threadProc()));
-        }
-
-        public IPclTcpClient CreateTcpClient()
-        {
-            return new PclTcpClient(new TcpClient());
-        }
-
-        public Stream FileOpenRead(string path)
-        {
-            return File.OpenRead(path);
-        }
-
-        public void ThreadSleep(int milliseconds)
-        {
-            Thread.Sleep(milliseconds);
+            var bitmap = new Bitmap(@"../../Resources/Textures/" + name);
+            var texture = context.Create.Texture2D(bitmap.Width, bitmap.Height, 1, Format.Rgba8);
+            var data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+            {
+                // todo: swap R-B and calculate mips ... if someone ever needs that here
+                texture.SetData(0, 0, 0, bitmap.Width, bitmap.Height, data.Scan0, FormatColor.Rgba, FormatType.UnsignedByte);
+            }
+            bitmap.UnlockBits(data);
+            return texture;
         }
     }
 }

@@ -61,7 +61,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ClientSettings.cs" />
-    <Compile Include="ClientStatisticsRenderer.cs" />
+    <Compile Include="FormClientStatisticsRenderer.cs" />
     <Compile Include="Memory.cs" />
     <Compile Include="MyGameWindow.cs" />
     <Compile Include="PclTcpClient.cs" />
@@ -75,6 +75,7 @@
     <Compile Include="StatisticsForm.Designer.cs">
       <DependentUpon>StatisticsForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="TextureLoader.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>

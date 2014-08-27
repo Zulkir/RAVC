@@ -107,10 +107,12 @@ namespace Ravc.Client.Android
         {
             context = new ObjectGL.CachingImpl.Context(gl, nativeGraphicsContext);
             var pclWorkarounds = new PclWorkarounds();
-            var statisticsRenderer = new ClientStatisticsRenderer();
+            var settings = new ClientSettings();
+            var textureLoader = new TextureLoader(assetManager);
+            var spritefont = new Spritefont(settings, context, textureLoader);
+            var statisticsRenderer = new OnScreenClientStatisticsRenderer(spritefont);
             var statistics = new ClientStatistics(statisticsRenderer);
             var byteArrayPool = new ByteArrayPool();
-            var settings = new ClientSettings();
             var streamReceiver = settings.FromFile
                 ? (IStreamReceiver)new AssetStreamReceiver(assetManager, byteArrayPool, "stream.dat")
                 : new TcpStreamReceiver(pclWorkarounds, settings, byteArrayPool);
@@ -120,7 +122,7 @@ namespace Ravc.Client.Android
             var textureInitializer = new TextureInitializer();
             var gpuProcessingStage = new GpuProcessingStage(pclWorkarounds, statistics, settings, context, textureInitializer);
             var timedBufferingStage = new TimeBufferingStage(settings, statistics, context);
-            mainLoop = new MainLoop(pclWorkarounds, statistics, settings, context, this, mainThreadBorderStage, timedBufferingStage);
+            mainLoop = new MainLoop(pclWorkarounds, statistics, settings, context, this, mainThreadBorderStage, timedBufferingStage, statisticsRenderer);
 
             //statisticsRenderer.ShowForm();
 

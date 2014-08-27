@@ -22,39 +22,13 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.IO;
-using System.Net.Sockets;
-using System.Threading;
-using Ravc.Client.OglLib.Pcl;
+using ObjectGL.Api;
+using ObjectGL.Api.Objects.Resources;
 
-namespace Ravc.Client.OglDesktop
+namespace Ravc.Client.OglLib
 {
-    public class PclWorkarounds : IPclWorkarounds
+    public interface ITextureLoader
     {
-        public void CopyBulk(IntPtr destination, IntPtr source, int numBytes)
-        {
-            Memory.CopyBulk(destination, source, numBytes);
-        }
-
-        public IPclThread CreateThread(Action threadProc)
-        {
-            return new PclThread(new Thread(() => threadProc()));
-        }
-
-        public IPclTcpClient CreateTcpClient()
-        {
-            return new PclTcpClient(new TcpClient());
-        }
-
-        public Stream FileOpenRead(string path)
-        {
-            return File.OpenRead(path);
-        }
-
-        public void ThreadSleep(int milliseconds)
-        {
-            Thread.Sleep(milliseconds);
-        }
+        ITexture2D LoadTexture(IContext context, string name);
     }
 }

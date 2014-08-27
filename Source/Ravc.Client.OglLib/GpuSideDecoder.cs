@@ -63,8 +63,6 @@ precision highp sampler2D;";
 @"
 in vec4 in_position;
 
-out vec2 v_tex_coord;
-
 void main()
 {
     gl_Position = vec4(in_position.x, -in_position.y, 0.0f, 1.0f);

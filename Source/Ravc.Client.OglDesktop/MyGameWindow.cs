@@ -72,10 +72,13 @@ namespace Ravc.Client.OglDesktop
 
             context = new Context(gl, nativeGraphicsContext);
             var pclWorkarounds = new PclWorkarounds();
-            var statisticsRenderer = new ClientStatisticsRenderer();
+            var settings = new ClientSettings();
+            var textureLoader = new TextureLoader();
+            var spritefont = new Spritefont(settings, context, textureLoader);
+            var statisticsRenderer = new OnScreenClientStatisticsRenderer(spritefont);
+            //var statisticsRenderer = new FormClientStatisticsRenderer();
             var statistics = new ClientStatistics(statisticsRenderer);
             var byteArrayPool = new ByteArrayPool();
-            var settings = new ClientSettings();
             var streamReceiver = settings.FromFile 
                 ? (IStreamReceiver)new FileStreamReceiver(pclWorkarounds, byteArrayPool, fileName ?? "stream.dat")
                 : new TcpStreamReceiver(pclWorkarounds, settings, byteArrayPool);
@@ -85,9 +88,9 @@ namespace Ravc.Client.OglDesktop
             var textureInitializer = new TextureInitializer();
             var gpuProcessingStage = new GpuProcessingStage(pclWorkarounds, statistics, settings, context, textureInitializer);
             var timedBufferingStage = new TimeBufferingStage(settings, statistics, context);
-            mainLoop = new MainLoop(pclWorkarounds, statistics, settings, context, this, mainThreadBorderStage, timedBufferingStage);
+            mainLoop = new MainLoop(pclWorkarounds, statistics, settings, context, this, mainThreadBorderStage, timedBufferingStage, statisticsRenderer);
 
-            statisticsRenderer.ShowForm();
+            //statisticsRenderer.ShowForm();
 
             PipelineBuilder
                 .BeginWith(streamReceivingStage)
