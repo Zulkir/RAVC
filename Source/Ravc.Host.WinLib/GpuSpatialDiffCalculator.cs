@@ -80,7 +80,7 @@ uint BuildCompressionInfo(int3 decodedDiff)
     uint3 encodedDiff = uint3((White + diff) % White);
     int3 decodedDiff = (encodedDiff + Grey) % White - Grey;
     uint compressionInfo = BuildCompressionInfo(decodedDiff);
-    Output[pixelCoord] = uint4(encodedDiff.bgr, compressionInfo);
+    Output[pixelCoord] = uint4(encodedDiff.rgb, compressionInfo);
 ";
 
         public GpuSpatialDiffCalculator(IDevice device)

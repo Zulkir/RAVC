@@ -60,9 +60,16 @@ namespace Ravc.Client.OglLib
         private readonly IVertexArray vertexArray;
         private readonly IBuffer dimensionsBuffer;
 
-        private const string VertexShaderText =
-@"#version 150
+        private const string DesktopHeader =
+@"#version 150";
+        private const string EsHeader =
+@"#version 300 es
 
+precision highp float;
+precision highp sampler2D;";
+
+        private const string VertexShaderText =
+@"
 layout(std140) uniform DimensionsBuffer
 {
     vec2 Dimensions;
@@ -83,8 +90,7 @@ void main()
         private readonly ISampler sampler;
 
         private const string FragmentShaderText =
-@"#version 150
-
+@"
 uniform sampler2D DiffuseTexture;
 
 in vec2 v_tex_coord;
@@ -99,11 +105,12 @@ void main()
 }
 ";
 
-        public TextureRenderer(IPclWorkarounds pclWorkarounds, IContext context)
+        public TextureRenderer(IPclWorkarounds pclWorkarounds, IClientSettings settings, IContext context)
         {
             this.pclWorkarounds = pclWorkarounds;
-            var vertexShader = context.Create.VertexShader(VertexShaderText);
-            var fragmentShader = context.Create.FragmentShader(FragmentShaderText);
+            var header = settings.IsEs ? EsHeader : DesktopHeader;
+            var vertexShader = context.Create.VertexShader(header + VertexShaderText);
+            var fragmentShader = context.Create.FragmentShader(header + FragmentShaderText);
             program = context.Create.Program(new ShaderProgramDescription
             {
                 VertexShaders = new[] { vertexShader },

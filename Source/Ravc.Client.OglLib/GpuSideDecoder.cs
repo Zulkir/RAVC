@@ -51,9 +51,16 @@ namespace Ravc.Client.OglLib
         private readonly IFramebuffer framebuffer;
         private readonly ISampler sampler;
 
-        private const string VertexShaderText =
-@"#version 150
+        private const string DesktopHeader = 
+@"#version 150";
+        private const string EsHeader =
+@"#version 300 es
 
+precision highp float;
+precision highp sampler2D;";
+
+        private const string VertexShaderText =
+@"
 in vec4 in_position;
 
 out vec2 v_tex_coord;
@@ -65,7 +72,7 @@ void main()
 ";
 
         private const string FragmentShaderText =
-@"#version 150
+@"
 uniform sampler2D DiffTexture;
 uniform sampler2D PrevTexture;
 
@@ -81,13 +88,15 @@ void main()
     vec4 nDiff = texelFetch(DiffTexture, intCoord, 0);
     vec4 nPrev = texelFetch(PrevTexture, intCoord, 0);
     out_color = NormCoef * mod((AbsCoef * (nPrev + nDiff)), One);
+    //out_color = vec4(1.0, 0.0, 0.0, 1.0);
 }
 ";
 
-        public GpuSideDecoder(IContext context)
+        public GpuSideDecoder(IClientSettings settings, IContext context)
         {
-            var vertexShader = context.Create.VertexShader(VertexShaderText);
-            var fragmentShader = context.Create.FragmentShader(FragmentShaderText);
+            var header = settings.IsEs ? EsHeader : DesktopHeader;
+            var vertexShader = context.Create.VertexShader(header + VertexShaderText);
+            var fragmentShader = context.Create.FragmentShader(header + FragmentShaderText);
             program = context.Create.Program(new ShaderProgramDescription
             {
                 VertexShaders = new[] { vertexShader },

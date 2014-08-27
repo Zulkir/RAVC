@@ -57,9 +57,16 @@ namespace Ravc.Client.OglLib
         private readonly ISampler avgDiffsampler;
         private readonly ISampler localDiffsampler;
 
-        private const string VertexShaderText =
-@"#version 150
+        private const string DesktopHeader =
+@"#version 150";
+        private const string EsHeader =
+@"#version 300 es
 
+precision highp float;
+precision highp sampler2D;";
+
+        private const string VertexShaderText =
+@"
 in vec2 in_position;
 
 void main()
@@ -69,8 +76,7 @@ void main()
 ";
 
         private const string FragmentShaderText =
-@"#version 150
-
+@"
 layout(std140) uniform StepInfoBuffer
 {
     int MipLevel;
@@ -91,14 +97,16 @@ void main()
     vec4 nAvgDiff = texelFetch(AverageDiffTexture, intCoord / 2, MipLevel + 1);
     vec4 nLocalDiff = texelFetch(LocalDiffTexture, intCoord, MipLevel);
     out_color = NormCoef * mod((AbsCoef * (nAvgDiff + nLocalDiff)), One);
+    //out_color = vec4(1.0, 0.0, 0.0, 1.0);
 }
 ";
 
-        public GpuSpatialDiffCalculator(IPclWorkarounds pclWorkarounds, IContext context)
+        public GpuSpatialDiffCalculator(IPclWorkarounds pclWorkarounds, IClientSettings settings, IContext context)
         {
             this.pclWorkarounds = pclWorkarounds;
-            var vertexShader = context.Create.VertexShader(VertexShaderText);
-            var fragmentShader = context.Create.FragmentShader(FragmentShaderText);
+            var header = settings.IsEs ? EsHeader : DesktopHeader;
+            var vertexShader = context.Create.VertexShader(header + VertexShaderText);
+            var fragmentShader = context.Create.FragmentShader(header + FragmentShaderText);
             program = context.Create.Program(new ShaderProgramDescription
             {
                 VertexShaders = new[] { vertexShader },

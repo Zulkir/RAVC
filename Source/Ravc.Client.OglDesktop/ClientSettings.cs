@@ -30,6 +30,7 @@ namespace Ravc.Client.OglDesktop
 {
     public class ClientSettings : IClientSettings 
     {
+        public bool IsEs { get { return false; } }
         public string TcpHostName { get; private set; }
         public int TcpPort { get; private set; }
         public bool FromFile { get; private set; }

@@ -83,9 +83,9 @@ namespace Ravc.Client.OglDesktop
             cpuDecompressionStage = new CpuDecompressionStage(pclWorkarounds, statistics, byteArrayPool);
             var mainThreadBorderStage = new MainThreadBorderStage(statistics);
             var textureInitializer = new TextureInitializer();
-            var gpuProcessingStage = new GpuProcessingStage(pclWorkarounds, statistics, context, textureInitializer);
+            var gpuProcessingStage = new GpuProcessingStage(pclWorkarounds, statistics, settings, context, textureInitializer);
             var timedBufferingStage = new TimeBufferingStage(settings, statistics, context);
-            mainLoop = new MainLoop(pclWorkarounds, context, this, mainThreadBorderStage, timedBufferingStage, statistics);
+            mainLoop = new MainLoop(pclWorkarounds, statistics, settings, context, this, mainThreadBorderStage, timedBufferingStage);
 
             statisticsRenderer.ShowForm();
 
@@ -103,7 +103,7 @@ namespace Ravc.Client.OglDesktop
         protected override void OnRenderFrame(FrameEventArgs e)
         {
             totalSeconds += e.Time;
-            mainLoop.OnNewFrame(e.Time, (float)totalSeconds);
+            mainLoop.OnNewFrame(e.Time);
             base.OnRenderFrame(e);
         }
 

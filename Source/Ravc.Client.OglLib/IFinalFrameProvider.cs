@@ -28,6 +28,6 @@ namespace Ravc.Client.OglLib
 {
     public interface IFinalFrameProvider
     {
-        ITexture2D GetTextureToRender(double localTimestamp);
+        ITexture2D GetTextureToRender();
     }
 }

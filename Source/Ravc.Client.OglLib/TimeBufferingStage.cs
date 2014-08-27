@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using ObjectGL.Api;
 using ObjectGL.Api.Objects.Resources;
 using Ravc.Utility.DataStructures;
@@ -54,8 +55,10 @@ namespace Ravc.Client.OglLib
             statistics.OnTimeBufferQueue(queue.Count);
         }
 
-        public ITexture2D GetTextureToRender(double localTimestamp)
+        public ITexture2D GetTextureToRender()
         {
+            var localTimestamp = (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency;
+
             if (!initiationComplete)
             {
                 if (queue.Count < settings.TimeBufferInitiationLength)

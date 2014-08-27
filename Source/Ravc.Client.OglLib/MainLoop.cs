@@ -39,23 +39,23 @@ namespace Ravc.Client.OglLib
         private readonly TextureRenderer textureRenderer;
         private readonly Stopwatch stopwatch;
 
-        public MainLoop(IPclWorkarounds pclWorkarounds, IContext context, IRavcGameWindow gameWindow, IMainThreadBorderStage mainThreadBorderStage, IFinalFrameProvider finalFrameProvider, IClientStatistics statistics)
+        public MainLoop(IPclWorkarounds pclWorkarounds, IClientStatistics statistics, IClientSettings settings, IContext context, IRavcGameWindow gameWindow, IMainThreadBorderStage mainThreadBorderStage, IFinalFrameProvider finalFrameProvider)
         {
             this.context = context;
+            this.statistics = statistics;
             this.gameWindow = gameWindow;
             this.mainThreadBorderStage = mainThreadBorderStage;
             this.finalFrameProvider = finalFrameProvider;
-            this.statistics = statistics;
-            textureRenderer = new TextureRenderer(pclWorkarounds, context);
+            textureRenderer = new TextureRenderer(pclWorkarounds, settings, context);
             stopwatch = new Stopwatch();
         }
 
-        public void OnNewFrame(double elapsedTime, double totalRealTime)
+        public void OnNewFrame(double elapsedTime)
         {
             context.ClearWindowColor(new Color4(0.4f, 0.6f, 0.9f, 1.0f));
 
             mainThreadBorderStage.DoMainThreadProcessing();
-            var textureToRender = finalFrameProvider.GetTextureToRender(totalRealTime);
+            var textureToRender = finalFrameProvider.GetTextureToRender();
             textureRenderer.Render(context, textureToRender, gameWindow.ClientWidth, gameWindow.ClientHeight);
 
             statistics.OnFrameRendered(elapsedTime);

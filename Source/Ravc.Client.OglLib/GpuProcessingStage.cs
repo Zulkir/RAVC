@@ -59,21 +59,21 @@ namespace Ravc.Client.OglLib
         private ITexture2D temporalDiffTex;
         private ITexture2D workingTex;
 
-        public GpuProcessingStage(IPclWorkarounds pclWorkarounds, IClientStatistics statistics, IContext context, ITextureInitializer textureInitializer)
+        public GpuProcessingStage(IPclWorkarounds pclWorkarounds, IClientStatistics statistics, IClientSettings settings, IContext context, ITextureInitializer textureInitializer)
         {
             this.pclWorkarounds = pclWorkarounds;
             this.statistics = statistics;
             this.context = context;
             this.textureInitializer = textureInitializer;
             texturePool = new TexturePool(context, textureInitializer, false);
-            gpuSideDecoder = new GpuSideDecoder(context);
-            gpuSpatialDiffCalculator = new GpuSpatialDiffCalculator(pclWorkarounds, context);
+            gpuSideDecoder = new GpuSideDecoder(settings, context);
+            gpuSpatialDiffCalculator = new GpuSpatialDiffCalculator(pclWorkarounds, settings, context);
 
             blackTex = context.Create.Texture2D(1, 1, 1, Format.Rgba8);
             stopwatch = new Stopwatch();
         }
 
-        public void Consume(UncompressedFrame input)
+        public unsafe void Consume(UncompressedFrame input)
         {
             var inputInfo = input.Info;
             if (inputInfo.AlignedWidth != width || inputInfo.AlignedHeight != height || inputInfo.Type == FrameType.Absolute)
@@ -107,10 +107,16 @@ namespace Ravc.Client.OglLib
 
             stopwatch.Restart();
             pixelUnpackBuffer.SetDataByMapping(pclWorkarounds, input.DataPooled.Item);
+            //pixelUnpackBuffer.SetData(input.DataPooled.Item);
+            //pixelUnpackBuffer.CheckData(input.DataPooled.Item);
+
+            
             int offset = 0;
+            //fixed (byte* pData = input.DataPooled.Item)
             for (int i = 0; i < EncodingConstants.MipLevels; i++)
             {
-                spatialDiffTex.SetData(i, (IntPtr)offset, FormatColor.Bgra, FormatType.UnsignedByte, pixelUnpackBuffer);
+                spatialDiffTex.SetData(i, (IntPtr)offset, FormatColor.Rgba, FormatType.UnsignedByte, pixelUnpackBuffer);
+                //spatialDiffTex.SetData(i, (IntPtr)pData + offset, FormatColor.Rgba, FormatType.UnsignedByte);
                 offset += (width >> i) * (height >> i) * 4;
             }
             stopwatch.Stop();

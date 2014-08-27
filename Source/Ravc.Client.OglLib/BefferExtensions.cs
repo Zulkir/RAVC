@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.IO;
 using ObjectGL.Api.Objects.Resources;
 using Ravc.Client.OglLib.Pcl;
 
@@ -39,8 +40,20 @@ namespace Ravc.Client.OglLib
 
         public static unsafe bool SetDataByMapping(this IBuffer buffer, IPclWorkarounds pclWorkarounds, byte[] data)
         {
+            bool result;
             fixed (byte* pData = data)
-                return SetDataByMapping(buffer, pclWorkarounds, (IntPtr)pData);
+                result = SetDataByMapping(buffer, pclWorkarounds, (IntPtr)pData);
+            return result;
+        }
+
+        public static unsafe void CheckData(this IBuffer buffer, byte[] data)
+        {
+            var pMapped = buffer.Map(0, buffer.SizeInBytes, MapAccess.Read);
+            for (int i = 0; i < buffer.SizeInBytes; i++)
+                if (data[i] != *(byte*)pMapped + i)
+                    throw new InvalidDataException(string.Format("Data differs at position {0}: expected {1}, but was {2}", 
+                        i, data[i], *(byte*)pMapped + i));
+            buffer.Unmap();
         }
 
         public static void SetData(this IBuffer buffer, IntPtr data)
