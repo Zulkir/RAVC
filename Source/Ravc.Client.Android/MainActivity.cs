@@ -33,7 +33,8 @@ namespace Ravc.Client.Android
     [Activity(Label = "Ravc.Client.Android",
         MainLauncher = true,
         Icon = "@drawable/icon",
-        ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.KeyboardHidden
+        ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.KeyboardHidden,
+        Theme = "@android:style/Theme.Black.NoTitleBar.Fullscreen"
 #if __ANDROID_11__
 		,HardwareAccelerated=false
 #endif

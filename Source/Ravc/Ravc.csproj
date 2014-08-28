@@ -72,6 +72,7 @@
     <Compile Include="Utility\IPooled.cs" />
     <Compile Include="Utility\Pool.cs" />
     <Compile Include="Utility\Pooled.cs" />
+    <Compile Include="Utility\PooledDummy.cs" />
     <Compile Include="Utility\PooledTexture.cs" />
     <Compile Include="Utility\RavcMath.cs" />
     <Compile Include="Utility\StatCounter.cs" />

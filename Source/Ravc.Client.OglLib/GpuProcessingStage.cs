@@ -107,12 +107,8 @@ namespace Ravc.Client.OglLib
 
             stopwatch.Restart();
             pixelUnpackBuffer.SetDataByMapping(pclWorkarounds, input.DataPooled.Item);
-            //pixelUnpackBuffer.SetData(input.DataPooled.Item);
-            //pixelUnpackBuffer.CheckData(input.DataPooled.Item);
-
             
             int offset = 0;
-            //fixed (byte* pData = input.DataPooled.Item)
             for (int i = 0; i < EncodingConstants.MipLevels; i++)
             {
                 spatialDiffTex.SetData(i, (IntPtr)offset, FormatColor.Rgba, FormatType.UnsignedByte, pixelUnpackBuffer);

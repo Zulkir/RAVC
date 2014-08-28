@@ -213,9 +213,9 @@ namespace Ravc.Encoding.Impl
             {
                 var compressedFrameInfo = *(CompressedFrameInfo*)source;
                 frameInfo = new FrameInfo(compressedFrameInfo.Type, compressedFrameInfo.Timestamp, compressedFrameInfo.OriginalWidth, compressedFrameInfo.OriginalHeight);
-
+            
                 resultBuffer = byteArrayPool.Extract(frameInfo.UncompressedSize);
-
+            
                 var partInfoBuffer = partInfoArrayPool.Extract();
                 var auxiliaryBuffer = byteArrayPool.Extract(frameInfo.UncompressedSize);
                 fixed (byte* auxiliary = auxiliaryBuffer.Item)
@@ -233,7 +233,7 @@ namespace Ravc.Encoding.Impl
                 auxiliaryBuffer.Release();
                 partInfoBuffer.Release();
             }
-
+            
             return new UncompressedFrame(frameInfo, resultBuffer);
         }
 

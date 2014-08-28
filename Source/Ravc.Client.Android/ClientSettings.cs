@@ -38,12 +38,12 @@ namespace Ravc.Client.Android
 
         public ClientSettings()
         {
-            TcpHostName = "127.0.0.1";
+            TcpHostName = "192.168.1.218";
             TcpPort = 7123;
-            FromFile = true;
+            FromFile = false;
             QueueCapacity = 10;
             TimeBufferInitiationLength = 1;
-            TimeOffsetOffset = 0.0f;
+            TimeOffsetOffset = -1.0f;
         }
     }
 }
