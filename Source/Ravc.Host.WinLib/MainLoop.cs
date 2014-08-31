@@ -35,10 +35,16 @@ namespace Ravc.Host.WinLib
 {
     public class MainLoop : IPipelinedProvider<GpuRawFrame>, IDisposable
     {
+        //private static readonly int[] DetailSequence = new[] { 2, 1, 2, 1, 2, 1, 2, 0 };
+        //private static readonly int[] DetailSequence = new[] { 1, 1, 1, 1, 1, 1, 1, 1 };
+        //private static readonly int[] DetailSequence = new[] { 0 };
+        private static readonly int[] DetailSequence = new[] { 0, 1, 0, 0, 0, 0, 0, 0 };
+
         private readonly IHostStatistics statistics;
         private readonly IDevice device;
         private readonly IScreenCaptor screenCaptor;
         private readonly Stopwatch stopwatch;
+        private int frameIndex;
         private IPipelinedConsumer<GpuRawFrame> nextStage;
         private IntSize oldSize;
 
@@ -84,7 +90,7 @@ namespace Ravc.Host.WinLib
                 context.ClearRenderTargetView(swapChain.GetCurrentColorBuffer(), Color4.CornflowerBlue);
 
                 GpuRawFrame capturedFrame;
-                if (screenCaptor.TryGetCaptured(context, beholderRect, FrameType.Relative, realTime.TotalRealTime, out capturedFrame))
+                if (screenCaptor.TryGetCaptured(context, beholderRect, FrameType.Relative, DetailSequence[frameIndex % DetailSequence.Length], out capturedFrame))
                 {
                     stopwatch.Restart();
                     nextStage.Consume(capturedFrame);
@@ -98,6 +104,8 @@ namespace Ravc.Host.WinLib
                 swapChain.Present();
                 stopwatch.Stop();
                 statistics.OnPresent(realTime.ElapsedRealTime, stopwatch.Elapsed.TotalMilliseconds);
+
+                frameIndex++;
             }
         }
 

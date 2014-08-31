@@ -22,10 +22,12 @@ THE SOFTWARE.
 */
 #endregion
 
+using System;
 using System.Runtime.InteropServices;
 using ObjectGL.Api;
 using ObjectGL.Api.Objects;
 using ObjectGL.Api.Objects.Resources;
+using Ravc.Client.OglLib.Pcl;
 
 namespace Ravc.Client.OglLib
 {
@@ -46,9 +48,11 @@ namespace Ravc.Client.OglLib
             public const int Size = 2 * sizeof(float);
         }
 
+        private readonly IPclWorkarounds pclWorkarounds;
         private readonly IShaderProgram program;
         private readonly IVertexArray vertexArray;
         private readonly IFramebuffer framebuffer;
+        private readonly IBuffer mipInfoBuffer;
         private readonly ISampler sampler;
 
         private const string DesktopHeader = 
@@ -71,6 +75,12 @@ void main()
 
         private const string FragmentShaderText =
 @"
+layout(std140) uniform MipInfoBuffer
+{
+    int MipLevel;
+    int CoordDivisor;
+};
+
 uniform sampler2D DiffTexture;
 uniform sampler2D PrevTexture;
 
@@ -78,20 +88,45 @@ out vec4 out_color;
 
 const float AbsCoef = (255.0f/256.0f);
 const float NormCoef = (256.0f/255.0f);
-const vec4 One = vec4(1.0, 1.0, 1.0, 1.0);
+const vec3 One = vec3(1.0, 1.0, 1.0);
+
+float MaxComponent(vec3 value)
+{
+    return max(max(value.x, value.y), value.z);
+}
 
 void main()
 {
-    ivec2 intCoord = ivec2(gl_FragCoord.xy);
-    vec4 nDiff = texelFetch(DiffTexture, intCoord, 0);
-    vec4 nPrev = texelFetch(PrevTexture, intCoord, 0);
-    out_color = NormCoef * mod((AbsCoef * (nPrev + nDiff)), One);
+    //ivec2 intCoord = ivec2(gl_FragCoord.xy);
+    //vec4 nDiff = texelFetch(DiffTexture, intCoord, 0);
+    //vec4 nPrev = texelFetch(PrevTexture, intCoord, 0);
+    //out_color = NormCoef * mod((AbsCoef * (nPrev + nDiff)), One);
     //out_color = vec4(1.0, 0.0, 0.0, 1.0);
+
+    ivec2 pixelCoordDetailed = ivec2(gl_FragCoord.xy);
+    ivec2 pixelCoordMip = pixelCoordDetailed / CoordDivisor;
+
+    vec3 previousValueDetailed = texelFetch(PrevTexture, pixelCoordDetailed, 0).rgb;
+    vec3 previousValueMip = texelFetch(PrevTexture, pixelCoordMip, MipLevel).rgb;
+    vec3 encodedDiff = texelFetch(DiffTexture, pixelCoordMip, MipLevel).rgb;
+
+    vec3 valueMip = NormCoef * mod((AbsCoef * (previousValueMip + encodedDiff)), One);
+    vec3 diffMip = valueMip - previousValueMip;
+
+    float diffSize = MaxComponent(abs(diffMip));
+
+    vec3 lossyValue = diffSize < 32.0/256.0 ? clamp(previousValueDetailed + diffMip, vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0)) : valueMip;
+    //vec3 lossyValue = valueMip;
+    //vec3 lossyValue = encodedDiff;
+    //vec3 lossyValue = texelFetch(DiffTexture, pixelCoordDetailed, 0).rgb;
+
+    out_color = vec4(lossyValue, 1.0);
 }
 ";
 
-        public GpuSideDecoder(IClientSettings settings, IContext context)
+        public GpuSideDecoder(IPclWorkarounds pclWorkarounds, IClientSettings settings, IContext context)
         {
+            this.pclWorkarounds = pclWorkarounds;
             var header = settings.IsEs ? EsHeader : DesktopHeader;
             var vertexShader = context.Create.VertexShader(header + VertexShaderText);
             var fragmentShader = context.Create.FragmentShader(header + FragmentShaderText);
@@ -100,6 +135,7 @@ void main()
                 VertexShaders = new[] { vertexShader },
                 FragmentShaders = new[] { fragmentShader },
                 VertexAttributeNames = new[] { "in_position" },
+                UniformBufferNames = new[] { "MipInfoBuffer" },
                 SamplerNames = new[] { "DiffTexture", "PrevTexture" }
             });
 
@@ -122,6 +158,8 @@ void main()
 
             framebuffer = context.Create.Framebuffer();
 
+            mipInfoBuffer = context.Create.Buffer(BufferTarget.UniformBuffer, 16, BufferUsageHint.DynamicDraw);
+
             sampler = context.Create.Sampler();
             sampler.SetMinFilter(TextureMinFilter.Nearest);
             sampler.SetMagFilter(TextureMagFilter.Nearest);
@@ -130,20 +168,27 @@ void main()
             sampler.SetWrapT(TextureWrapMode.Clamp);
         }
 
-        public void Decode(IContext context, ITexture2D target, ITexture2D texture, ITexture2D parentTexture, int width, int height)
+        public unsafe void Decode(IContext context, ITexture2D target, ITexture2D texture, ITexture2D parentTexture, int mostDetailedMip)
         {
             var pipeline = context.Pipeline;
 
             pipeline.Program = program;
             pipeline.VertexArray = vertexArray;
-            
-            pipeline.Viewports[0].Set(width, height);
+
+            pipeline.Viewports[0].Set(target.Width, target.Height);
             pipeline.Rasterizer.SetDefault();
             pipeline.Rasterizer.MultisampleEnable = false;
 
             framebuffer.AttachTextureImage(FramebufferAttachmentPoint.Color0, target, 0);
             pipeline.Framebuffer = framebuffer;
-            
+
+            Vector4 mipInfoData;
+            var mipInfoPtr = (int*)&mipInfoData;
+            mipInfoPtr[0] = mostDetailedMip;
+            mipInfoPtr[1] = 1 << mostDetailedMip;
+            mipInfoBuffer.SetDataByMapping(pclWorkarounds, (IntPtr)mipInfoPtr);
+
+            pipeline.UniformBuffers[0] = mipInfoBuffer;
             pipeline.Textures[0] = texture;
             pipeline.Samplers[0] = sampler;
             pipeline.Textures[1] = parentTexture;

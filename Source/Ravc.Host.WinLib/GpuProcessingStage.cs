@@ -28,6 +28,7 @@ using Beholder.Core;
 using Beholder.Libraries.SharpDX11.Core;
 using Beholder.Platform;
 using Beholder.Resources;
+using Ravc.Encoding;
 using Ravc.Utility;
 using System.Linq;
 using Ravc.Utility.DataStructures;
@@ -38,11 +39,15 @@ namespace Ravc.Host.WinLib
     {
         private readonly IDevice device;
         private readonly int formatRgbaTypelessId;
+        private readonly int formatRgbaUnormId;
+        private readonly int formatRgbaUnormSrgbId;
         private readonly TexturePool texturePool;
         private readonly GpuChannelSwapper gpuChannelSwapper;
         private readonly GpuTemporalDiffCalculator gpuTemporalDiffCalculator;
         private readonly GpuDiffMipGenerator gpuDiffMipGenerator;
         private readonly GpuSpatialDiffCalculator gpuSpatialDiffCalculator;
+        private readonly GpuLossyCalculator gpuLossyCalculator;
+        private readonly TextureRenderer textureRenderer;
         private readonly ITexture2D blackTex;
         private IPipelinedConsumer<GpuEncodedFrame> nextStage;
         private int width;
@@ -56,23 +61,29 @@ namespace Ravc.Host.WinLib
         {
             this.device = device;
             formatRgbaTypelessId = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_TYPELESS).ID;
+            formatRgbaUnormId = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_UNORM).ID;
+            formatRgbaUnormSrgbId = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_UNORM_SRGB).ID;
             texturePool = new TexturePool(device, formatRgbaTypelessId, Usage.Default, BindFlags.ShaderResource | BindFlags.RenderTarget | BindFlags.UnorderedAccess, MiscFlags.GenerateMips);
             gpuChannelSwapper = new GpuChannelSwapper(device);
             gpuTemporalDiffCalculator = new GpuTemporalDiffCalculator(device);
             gpuDiffMipGenerator = new GpuDiffMipGenerator(device);
             gpuSpatialDiffCalculator = new GpuSpatialDiffCalculator(device);
+            gpuLossyCalculator = new GpuLossyCalculator(device);
+            textureRenderer = new TextureRenderer(device);
 
+            var blackData = new byte[EncodingConstants.DimensionAlignment * EncodingConstants.DimensionAlignment * 4];
+            var allBlackData = Enumerable.Range(0, EncodingConstants.MipLevels).Select(x => new SubresourceData(blackData)).ToArray();
             blackTex = device.Create.Texture2D(new Texture2DDescription
             {
-                Width = 1,
-                Height = 1,
+                Width = EncodingConstants.DimensionAlignment,
+                Height = EncodingConstants.DimensionAlignment,
                 ArraySize = 1,
-                MipLevels = 1,
+                MipLevels = EncodingConstants.MipLevels,
                 Sampling = Sampling.NoMultisampling,
-                FormatID = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_TYPELESS).ID,
+                FormatID = formatRgbaTypelessId,
                 Usage = Usage.Immutable,
                 BindFlags = BindFlags.ShaderResource
-            }, new[] {new SubresourceData(new byte[4])});
+            }, allBlackData);
         }
 
         public void Dispose()
@@ -109,6 +120,8 @@ namespace Ravc.Host.WinLib
             ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetUnorderedAccessView(0, null);
             ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(0, null);
 
+            context.GenerateMips(copyTex.ViewAsShaderResource(formatRgbaUnormId, 0, copyTex.MipLevels));
+
             capturedFramePooled.Release();
 
             var temporalDiffPooled = texturePool.Extract(width, height);
@@ -119,24 +132,48 @@ namespace Ravc.Host.WinLib
             ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(0, null);
             ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(1, null);
 
-            gpuDiffMipGenerator.GenerateMips(context, temporalDiffTex);
+            copyPooled.Release();
 
             var spatialDiffPooled = texturePool.Extract(width, height);
             var spatialDiffTex = spatialDiffPooled.Item;
-            gpuSpatialDiffCalculator.CalculateDiff(context, spatialDiffTex, temporalDiffTex);
+            gpuSpatialDiffCalculator.CalculateDiff(context, spatialDiffTex, temporalDiffTex, input.Info.MostDetailedMip);
 
-            temporalDiffPooled.Release();
-            //spatialDiffPooled.Release();
+            
+
+            var decodedTemporalDiffPooled = texturePool.Extract(width, height);
+            gpuSpatialDiffCalculator.Revert(context, decodedTemporalDiffPooled.Item, spatialDiffPooled.Item, input.Info.MostDetailedMip);
+
+            //textureRenderer.Render(context, context.Device.PrimarySwapChain.GetCurrentColorBuffer(), spatialDiffPooled.Item.ViewAsShaderResource(formatRgbaUnormId, input.Info.MostDetailedMip, 1), width, height);
 
             var encodedFrame = new GpuEncodedFrame(input.Info, spatialDiffPooled);
             nextStage.Consume(encodedFrame);
+            //encodedFrame.DiffPooled.Release();
+
+            
 
             if (prevFrameTexPooled != null)
             {
+                var lossyPooled = texturePool.Extract(width, height);
+                gpuLossyCalculator.CalculateLossy(context, lossyPooled.Item, prevFrameTexPooled.Item, decodedTemporalDiffPooled.Item, input.Info.MostDetailedMip);
                 prevFrameTexPooled.Release();
-                prevFrameTexPooled = null;
-            }   
-            prevFrameTexPooled = copyPooled;
+                prevFrameTexPooled = lossyPooled;
+            }
+            else
+            {
+                prevFrameTexPooled = texturePool.Extract(width, height);
+                gpuLossyCalculator.CalculateLossy(context, prevFrameTexPooled.Item, blackTex, decodedTemporalDiffPooled.Item, input.Info.MostDetailedMip);
+            }
+
+            ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetUnorderedAccessView(0, null);
+            ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(0, null);
+            ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(1, null);
+
+            temporalDiffPooled.Release();
+            decodedTemporalDiffPooled.Release();
+
+            context.GenerateMips(prevFrameTexPooled.Item.ViewAsShaderResource(formatRgbaUnormId, 0, prevFrameTexPooled.Item.MipLevels));
+
+            textureRenderer.Render(context, context.Device.PrimarySwapChain.GetCurrentColorBuffer(), prevFrameTexPooled.Item.ViewAsShaderResource(formatRgbaUnormId, 0, 1), width, height);
         }
     }
 }

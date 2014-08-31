@@ -128,7 +128,7 @@ namespace Ravc.Host.Win8
             textureAwaitsProcessing = true;
         }
 
-        public bool TryGetCaptured(IDeviceContext context, IntRectangle clientRectangle, FrameType frameType, float defaultTimestamp, out GpuRawFrame capturedFrame)
+        public bool TryGetCaptured(IDeviceContext context, IntRectangle clientRectangle, FrameType frameType, int mostDetailedMip, out GpuRawFrame capturedFrame)
         {
             //if (!textureAwaitsProcessing)
             //{
@@ -183,7 +183,7 @@ namespace Ravc.Host.Win8
             textureAwaitsProcessing = false;
 
             var timestamp = (float)dxgiFrameInfo.LastPresentTime / Stopwatch.Frequency;
-            var frameInfo = new FrameInfo(frameType, (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency, clientRectangle.Width, clientRectangle.Height);
+            var frameInfo = new FrameInfo(frameType, (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency, mostDetailedMip, clientRectangle.Width, clientRectangle.Height);
             capturedFrame = new GpuRawFrame(frameInfo, resultPooled);
 
             return true;

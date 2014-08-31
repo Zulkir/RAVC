@@ -30,7 +30,7 @@ namespace Ravc.Host.WinLib
 {
     public interface IScreenCaptor : IDisposable
     {
-        bool TryGetCaptured(IDeviceContext deviceContext, IntRectangle clientRectangle, FrameType frameType, float defaultTimestamp, out GpuRawFrame capturedFrame);
+        bool TryGetCaptured(IDeviceContext deviceContext, IntRectangle clientRectangle, FrameType frameType, int mostDetailedMip, out GpuRawFrame capturedFrame);
         void Start();
         void Stop();
     }

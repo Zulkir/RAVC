@@ -50,7 +50,8 @@ namespace Ravc.Client.OglLib
         }
 
         private readonly IPclWorkarounds pclWorkarounds;
-        private readonly IShaderProgram program;
+        private readonly IShaderProgram decodeProgram;
+        private readonly IShaderProgram stretchProgram;
         private readonly IVertexArray vertexArray;
         private readonly IFramebuffer framebuffer;
         private readonly IBuffer stepInfoBuffer;
@@ -75,7 +76,7 @@ void main()
 }
 ";
 
-        private const string FragmentShaderText =
+        private const string DecodeFragmentShaderText =
 @"
 layout(std140) uniform StepInfoBuffer
 {
@@ -101,19 +102,54 @@ void main()
 }
 ";
 
+        private const string StretchFragmentShaderText =
+@"
+layout(std140) uniform MipInfoBuffer
+{
+    int MostDetailedMip;
+    int CoordDivisor;
+};
+
+uniform sampler2D DiffTexture;
+
+out vec4 out_color;
+
+const float AbsCoef = (255.0f/256.0f);
+const float NormCoef = (256.0f/255.0f);
+const vec4 One = vec4(1.0, 1.0, 1.0, 1.0);
+
+void main()
+{
+    ivec2 intCoord = ivec2(gl_FragCoord.xy);
+    vec4 diff = texelFetch(DiffTexture, intCoord / CoordDivisor, MostDetailedMip);
+    out_color = diff;
+}
+";
+
         public GpuSpatialDiffCalculator(IPclWorkarounds pclWorkarounds, IClientSettings settings, IContext context)
         {
             this.pclWorkarounds = pclWorkarounds;
             var header = settings.IsEs ? EsHeader : DesktopHeader;
             var vertexShader = context.Create.VertexShader(header + VertexShaderText);
-            var fragmentShader = context.Create.FragmentShader(header + FragmentShaderText);
-            program = context.Create.Program(new ShaderProgramDescription
+            
+            var decodeFragmentShader = context.Create.FragmentShader(header + DecodeFragmentShaderText);
+            decodeProgram = context.Create.Program(new ShaderProgramDescription
             {
                 VertexShaders = new[] { vertexShader },
-                FragmentShaders = new[] { fragmentShader },
+                FragmentShaders = new[] { decodeFragmentShader },
                 VertexAttributeNames = new[] { "in_position" },
                 UniformBufferNames = new[] { "StepInfoBuffer" },
                 SamplerNames = new[] { "AverageDiffTexture", "LocalDiffTexture" }
+            });
+
+            var stretchFragmentShader = context.Create.FragmentShader(header + StretchFragmentShaderText);
+            stretchProgram = context.Create.Program(new ShaderProgramDescription
+            {
+                VertexShaders = new[] { vertexShader },
+                FragmentShaders = new[] { stretchFragmentShader },
+                VertexAttributeNames = new[] { "in_position" },
+                UniformBufferNames = new[] { "MipInfoBuffer" },
+                SamplerNames = new[] { "DiffTexture" }
             });
 
             var vertexBuffer = context.Create.Buffer(BufferTarget.ArrayBuffer, 4 * Vertex.Size, BufferUsageHint.StaticDraw, new[]
@@ -141,11 +177,10 @@ void main()
             localDiffsampler = context.Create.Sampler();
         }
 
-        public unsafe void ApplyDiff(IContext context, ITexture2D target, ITexture2D spatialDiffTexture, ITexture2D workingTexture)
+        public unsafe void ApplyDiff(IContext context, ITexture2D target, ITexture2D spatialDiffTexture, ITexture2D workingTexture, int mostDetailedMip)
         {
             var pipeline = context.Pipeline;
 
-            pipeline.Program = program;
             pipeline.VertexArray = vertexArray;
             
             pipeline.Rasterizer.SetDefault();
@@ -164,10 +199,14 @@ void main()
 
             pipeline.Blend.SetDefault(false);
 
-            if (EncodingConstants.MipLevels % 2 == 0)
+            pipeline.Program = decodeProgram;
+
+            var loopIterationCount = EncodingConstants.MipLevels - mostDetailedMip;
+            //var detailCompensationCount = mostDetailedMip != 0 ? 1 : 0;
+            if (loopIterationCount % 2 == 0)
                 Swap(ref target, ref workingTexture);
 
-            for (int i = EncodingConstants.SmallestMip; i >= 0; i--)
+            for (int i = EncodingConstants.SmallestMip; i >= mostDetailedMip; i--)
             {
                 Vector4 stepInfoBufferData;
                 *(int*)&stepInfoBufferData = i;

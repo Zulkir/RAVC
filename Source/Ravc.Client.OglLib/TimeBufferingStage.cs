@@ -46,7 +46,7 @@ namespace Ravc.Client.OglLib
             this.settings = settings;
             this.statistics = statistics;
             queue = new Queue<GpuSideFrame>();
-            current = new GpuSideFrame(new FrameInfo(FrameType.Absolute, 0.0f, 64, 64), new TexturePool(context, new TextureInitializer(), false).Extract(64, 64));
+            current = new GpuSideFrame(new FrameInfo(FrameType.Absolute, 0.0f, 0, 64, 64), new TexturePool(context, new TextureInitializer(), false).Extract(64, 64));
         }
 
         public void Consume(GpuSideFrame input)

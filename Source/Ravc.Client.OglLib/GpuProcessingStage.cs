@@ -42,6 +42,7 @@ namespace Ravc.Client.OglLib
         private readonly TexturePool texturePool;
         private readonly GpuSideDecoder gpuSideDecoder;
         private readonly GpuSpatialDiffCalculator gpuSpatialDiffCalculator;
+        private readonly GpuMipCalculator gpuMipCalculator;
         private readonly ITextureInitializer textureInitializer;
         private readonly ITexture2D blackTex;
         private readonly Stopwatch stopwatch;
@@ -65,11 +66,12 @@ namespace Ravc.Client.OglLib
             this.statistics = statistics;
             this.context = context;
             this.textureInitializer = textureInitializer;
-            texturePool = new TexturePool(context, textureInitializer, false);
-            gpuSideDecoder = new GpuSideDecoder(settings, context);
+            texturePool = new TexturePool(context, textureInitializer, true);
+            gpuSideDecoder = new GpuSideDecoder(pclWorkarounds, settings, context);
             gpuSpatialDiffCalculator = new GpuSpatialDiffCalculator(pclWorkarounds, settings, context);
+            gpuMipCalculator = new GpuMipCalculator(pclWorkarounds, settings, context);
 
-            blackTex = context.Create.Texture2D(1, 1, 1, Format.Rgba8);
+            blackTex = context.Create.Texture2D(EncodingConstants.DimensionAlignment, EncodingConstants.DimensionAlignment, EncodingConstants.MipLevels, Format.Rgba8);
             stopwatch = new Stopwatch();
         }
 
@@ -106,26 +108,30 @@ namespace Ravc.Client.OglLib
             }
 
             stopwatch.Restart();
-            pixelUnpackBuffer.SetDataByMapping(pclWorkarounds, input.DataPooled.Item);
+            //pixelUnpackBuffer.SetDataByMapping(pclWorkarounds, input.DataPooled.Item);
             
             int offset = 0;
-            for (int i = 0; i < EncodingConstants.MipLevels; i++)
+            fixed (byte* pData = input.DataPooled.Item)
+            for (int i = input.Info.MostDetailedMip; i < EncodingConstants.MipLevels; i++)
             {
-                spatialDiffTex.SetData(i, (IntPtr)offset, FormatColor.Rgba, FormatType.UnsignedByte, pixelUnpackBuffer);
-                //spatialDiffTex.SetData(i, (IntPtr)pData + offset, FormatColor.Rgba, FormatType.UnsignedByte);
+                //spatialDiffTex.SetData(i, (IntPtr)offset, FormatColor.Rgba, FormatType.UnsignedByte, pixelUnpackBuffer);
+                spatialDiffTex.SetData(i, (IntPtr)pData + offset, FormatColor.Rgba, FormatType.UnsignedByte);
                 offset += (width >> i) * (height >> i) * 4;
             }
             stopwatch.Stop();
             statistics.OnGpuUpload(stopwatch.Elapsed.Milliseconds);
             
-            gpuSpatialDiffCalculator.ApplyDiff(context, temporalDiffTex, spatialDiffTex, workingTex);
+            gpuSpatialDiffCalculator.ApplyDiff(context, temporalDiffTex, spatialDiffTex, workingTex, input.Info.MostDetailedMip);
 
             var resultPooled = texturePool.Extract(width, height);
-            var resultTex = resultPooled.Item;
             var parentTex = prevTexPooled != null ? prevTexPooled.Item : blackTex;
 
-            gpuSideDecoder.Decode(context, resultTex, temporalDiffTex, parentTex, width, height);
+            gpuMipCalculator.Decode(context, parentTex, workingTex, input.Info.MostDetailedMip);
+            //parentTex.GenerateMipmap();
+
+            gpuSideDecoder.Decode(context, resultPooled.Item, temporalDiffTex, parentTex, input.Info.MostDetailedMip);
             
+
             if (prevTexPooled != null)
                 prevTexPooled.Release();
             prevTexPooled = resultPooled;

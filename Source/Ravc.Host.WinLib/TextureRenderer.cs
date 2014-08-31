@@ -25,6 +25,7 @@ THE SOFTWARE.
 using System;
 using Beholder;
 using Beholder.Core;
+using Beholder.Libraries.SharpDX11.Core;
 using Beholder.Math;
 using Beholder.Resources;
 
@@ -91,28 +92,25 @@ static float3 Half = float3(0.5, 0.5, 0.5);
 
     //val = ((val + Half) % One) - Half;
     //val = abs(val);
+    //val *= 64.0;
 
-    float norm = max(val.x, max(val.y, val.z));
-
-    //if (norm < 2.5 / 256)
-    //    val = float3(0, 0, 0);
-    
-    //if (val.g > 0.0 || val.b > 0.0)
-    //    val = float3(0, 0, 0);
-
+    //float norm = max(val.x, max(val.y, val.z));
+    //
     //if (norm < 0.5 / 256)
     //    val = float3(0, 0, 0);
-    //else if (norm < 2.5 / 256)
+    //else if (norm < 1.5 / 256)
     //    val = float3(1, 0, 0);
-    //else if (norm < 8.5 / 256)
+    //else if (norm < 4.5 / 256)
     //    val = float3(0, 1, 0);
+    //else if (norm < 8.5 / 256)
+    //    val = float3(0, 0, 1);
     //else
     //    val = float3(1, 1, 1);
 
     //val = val * 256;
     
-    float a = sample(DiffuseTexture, INPUT(TexCoord)).a;
-    val = norm < 0.5/256 ? float3(0,0,0) : a < 0.5/256 ? float3(1,0,0) : a < 1.5/256 ? float3(0,1,0) : a < 2.5/256 ? float3(0,0,1) : float3(1,1,1);
+    //float a = sample(DiffuseTexture, INPUT(TexCoord)).a;
+    //val = norm < 0.5/256 ? float3(0,0,0) : a < 0.5/256 ? float3(1,0,0) : a < 1.5/256 ? float3(0,1,0) : a < 2.5/256 ? float3(0,0,1) : float3(1,1,1);
 
     //val = norm < 0.5/256 ? float3(0,0,0) : float3(1,1,1);    
 
@@ -156,6 +154,9 @@ static float3 Half = float3(0.5, 0.5, 0.5);
             context.PixelStage.Samplers[0] = samplerState;
 
             Draw(context);
+
+            context.PixelStage.ShaderResources[0] = null;
+            ((CDeviceContext)context).D3DDeviceContext.PixelShader.SetShaderResource(0, null);
         }
     }
 }

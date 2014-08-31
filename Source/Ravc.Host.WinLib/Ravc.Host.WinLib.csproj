@@ -72,6 +72,7 @@
     <Compile Include="GpuChannelSwapper.cs" />
     <Compile Include="GpuDiffMipGenerator.cs" />
     <Compile Include="GpuEncodedFrame.cs" />
+    <Compile Include="GpuLossyCalculator.cs" />
     <Compile Include="GpuProcessingStage.cs" />
     <Compile Include="GpuRawFrame.cs" />
     <Compile Include="GpuReadBackStage.cs" />

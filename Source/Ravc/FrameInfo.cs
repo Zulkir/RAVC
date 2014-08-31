@@ -30,6 +30,7 @@ namespace Ravc
     {
         public FrameType Type { get; private set; }
         public float Timestamp { get; private set; }
+        public int MostDetailedMip { get; private set; }
         public int OriginalWidth { get; private set; }
         public int OriginalHeight { get; private set; }
 
@@ -37,16 +38,17 @@ namespace Ravc
         public int AlignedHeight { get; private set; }
         public int UncompressedSize { get; private set; }
 
-        public FrameInfo(FrameType type, float timestamp, int width, int height)
+        public FrameInfo(FrameType type, float timestamp, int mostDetailedMip, int width, int height)
         {
-            OriginalWidth = width;
-            OriginalHeight = height;
             Type = type;
             Timestamp = timestamp;
+            OriginalWidth = width;
+            OriginalHeight = height;
+            MostDetailedMip = mostDetailedMip;
 
             AlignedWidth = AlignDimension(width);
             AlignedHeight = AlignDimension(height);
-            UncompressedSize = CalculateUncompressedSize(AlignedWidth, AlignedHeight);
+            UncompressedSize = CalculateUncompressedSize(AlignedWidth, AlignedHeight, mostDetailedMip);
         }
 
         private static int AlignDimension(int x)
@@ -55,12 +57,12 @@ namespace Ravc
             return mod == 0 ? x : x + EncodingConstants.DimensionAlignment - mod;
         }
 
-        private static int CalculateUncompressedSize(int alignedWidth, int alignedHeight)
+        private static int CalculateUncompressedSize(int alignedWidth, int alignedHeight, int mostDetailedMip)
         {
-            int smallestMipWidth = alignedWidth >> EncodingConstants.SmallestMip;
-            int smallestMipHeight = alignedHeight >> EncodingConstants.SmallestMip;
-            const int sizeInSmallestMips = ((1 << (2 * EncodingConstants.MipLevels)) - 1) / (4 - 1);
-            return (smallestMipWidth * smallestMipHeight * 4) * sizeInSmallestMips;
+            int result = 0;
+            for (int i = mostDetailedMip; i < EncodingConstants.MipLevels; i++)
+                result += (alignedWidth >> i) * (alignedHeight >> i) * 4;
+            return result;
         }
     }
 }

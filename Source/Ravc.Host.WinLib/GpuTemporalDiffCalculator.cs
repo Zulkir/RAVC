@@ -28,6 +28,7 @@ using Beholder.Platform;
 using Beholder.Resources;
 using Beholder.Shaders;
 using System.Linq;
+using Ravc.Encoding;
 using Ravc.Utility;
 
 namespace Ravc.Host.WinLib
@@ -58,10 +59,18 @@ RWTexture2D <uint4> Output : slot = 0
 %code_global
 static int4 White = int4(256, 256, 256, 256);
 
+int MaxComponent(int3 value)
+{
+    return max(value.x, max(value.y, value.z));
+}
+
 %code_main
     int2 pixelCoord = INPUT(ThreadId).xy;
-    int4 diff = (White + CurrentFrameTex[pixelCoord] - ParentFrameTex[pixelCoord]) % White;
-    Output[pixelCoord] = diff;
+    int3 diff = CurrentFrameTex[pixelCoord].rgb - ParentFrameTex[pixelCoord].rgb;
+    int steppingZero = MaxComponent(abs(diff)) > 2 ? 1 : 0;
+    //int steppingZero = 1;
+    uint3 endocedDiff = steppingZero * ((White + diff) % White);
+    Output[pixelCoord] = uint4(endocedDiff, 255);
 ";
 
         public GpuTemporalDiffCalculator(IDevice device)
@@ -72,16 +81,20 @@ static int4 White = int4(256, 256, 256, 256);
 
         public void CalculateDiff(IDeviceContext context, ITexture2D target, ITexture2D current, ITexture2D parentTexture)
         {
-            var uav = target.ViewAsUnorderedAccessResource(formatId, 0);
-            var currentSrv = current.ViewAsShaderResource(formatId, 0, 1);
-            var parentSrv = parentTexture.ViewAsShaderResource(formatId, 0, 1);
-
             context.ShaderForDispatching = computeShader;
-            context.ComputeStage.UnorderedAccessResources[0] = uav;
-            context.ComputeStage.ShaderResources[0] = currentSrv;
-            context.ComputeStage.ShaderResources[1] = parentSrv;
 
-            context.Dispatch(RavcMath.DivideAndCeil(target.Width, 16), RavcMath.DivideAndCeil(target.Height, 16), 1);
+            for (int i = 0; i < EncodingConstants.MipLevels; i++)
+            {
+                var uav = target.ViewAsUnorderedAccessResource(formatId, i);
+                var currentSrv = current.ViewAsShaderResource(formatId, i, 1);
+                var parentSrv = parentTexture.ViewAsShaderResource(formatId, i, 1);
+
+                context.ComputeStage.UnorderedAccessResources[0] = uav;
+                context.ComputeStage.ShaderResources[0] = currentSrv;
+                context.ComputeStage.ShaderResources[1] = parentSrv;
+
+                context.Dispatch(RavcMath.DivideAndCeil(target.Width >> i, 16), RavcMath.DivideAndCeil(target.Height >> i, 16), 1);
+            }
         }
     }
 }

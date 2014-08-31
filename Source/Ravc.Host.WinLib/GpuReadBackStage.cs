@@ -25,7 +25,6 @@ THE SOFTWARE.
 using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading.Tasks;
 using Beholder;
 using Beholder.Core;
 using Beholder.Platform;
@@ -126,10 +125,10 @@ namespace Ravc.Host.WinLib
             fixed (byte* pData = dataPooled.Item)
             {
                 var pDataMip = pData;
-                int width = frontStagingFrame.Info.AlignedWidth;
-                int height = frontStagingFrame.Info.AlignedHeight;
+                int width = frontStagingFrame.Info.AlignedWidth >> frontStagingFrame.Info.MostDetailedMip;
+                int height = frontStagingFrame.Info.AlignedHeight >> frontStagingFrame.Info.MostDetailedMip;
 
-                for (int i = 0; i < EncodingConstants.MipLevels; i++)
+                for (int i = frontStagingFrame.Info.MostDetailedMip; i < EncodingConstants.MipLevels; i++)
                 {
                     var pDataMipLocal = pDataMip;
                     var dataRowSize = width * 4;
@@ -137,9 +136,9 @@ namespace Ravc.Host.WinLib
                     var mapInfo = context.Map(frontTex, i, MapType.Read, MapFlags.None);
                     {
                         int rowSizeToCopy = Math.Min(dataRowSize, mapInfo.RowPitch);
-                        //for (int r = 0; r < height; r++)
-                        Parallel.For(0, height, r =>
-                            Memory.CopyBulk(pDataMipLocal + r * dataRowSize, (byte*)mapInfo.Data + r * mapInfo.RowPitch, rowSizeToCopy));
+                        for (int r = 0; r < height; r++)
+                        //Parallel.For(0, height, r =>
+                            Memory.CopyBulk(pDataMipLocal + r * dataRowSize, (byte*)mapInfo.Data + r * mapInfo.RowPitch, rowSizeToCopy);//);
                     }
                     context.Unmap(frontTex, i);
 
@@ -154,6 +153,7 @@ namespace Ravc.Host.WinLib
 
             var uncompressedFrame = new UncompressedFrame(frontStagingFrame.Info, dataPooled);
             nextStage.Consume(uncompressedFrame);
+            //uncompressedFrame.DataPooled.Release();
         }
     }
 }

@@ -24,7 +24,6 @@ THE SOFTWARE.
 
 using System;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using Ravc.Encoding.Transforms;
 using Ravc.Pcl;
 using Ravc.Utility;
@@ -39,9 +38,10 @@ namespace Ravc.Encoding.Impl
             public int OriginalWidth;
             public int OriginalHeight;
             public FrameType Type;
+            public int MostDetailedMip;
             public float Timestamp;
 
-            public const int Size = 3 * sizeof(int) + sizeof(float);
+            public const int Size = 4 * sizeof(int) + sizeof(float);
         }
 
         private struct PartInfo
@@ -52,7 +52,7 @@ namespace Ravc.Encoding.Impl
             public int UncompressedSize;
         }
 
-        private const int PartCount = 24;
+        private const int PartCount = 1;
         private const int LastPartIndex = PartCount - 1;
         private const int PartOffsetsTableSize = PartCount * sizeof(int);
         private const int HeaderSize = CompressedFrameInfo.Size + PartOffsetsTableSize;
@@ -60,8 +60,8 @@ namespace Ravc.Encoding.Impl
         private readonly IPclWorkarounds pclWorkarounds;
         private readonly ByteArrayPool byteArrayPool;
         private readonly Pool<PartInfo[]> partInfoArrayPool;
-        private readonly byte[] blockEncodingWriteLut;
-        private readonly byte[] blockEncodingReadLut;
+        //private readonly byte[] blockEncodingWriteLut;
+        //private readonly byte[] blockEncodingReadLut;
         private readonly byte[] dottedEncodingReadLut;
 
         public CpuSideCodec(IPclWorkarounds pclWorkarounds, ByteArrayPool byteArrayPool)
@@ -71,13 +71,13 @@ namespace Ravc.Encoding.Impl
 
             partInfoArrayPool = new Pool<PartInfo[]>(() => new PartInfo[PartCount]);
 
-            blockEncodingWriteLut = new byte[TernaryBlockEncoding.WriteLutSize];
-            fixed (byte* pWriteLut = blockEncodingWriteLut)
-                TernaryBlockEncoding.BuildWriteLut(pWriteLut);
+            //blockEncodingWriteLut = new byte[TernaryBlockEncoding.WriteLutSize];
+            //fixed (byte* pWriteLut = blockEncodingWriteLut)
+            //    TernaryBlockEncoding.BuildWriteLut(pWriteLut);
 
-            blockEncodingReadLut = new byte[TernaryBlockEncoding.ReadLutSize];
-            fixed (byte* pReadLut = blockEncodingReadLut)
-                TernaryBlockEncoding.BuildReadLut(pReadLut);
+            //blockEncodingReadLut = new byte[TernaryBlockEncoding.ReadLutSize];
+            //fixed (byte* pReadLut = blockEncodingReadLut)
+            //    TernaryBlockEncoding.BuildReadLut(pReadLut);
 
             dottedEncodingReadLut = new byte[DottedEncoding.ReadLutSize];
             fixed (byte* pReadLut = dottedEncodingReadLut)
@@ -103,6 +103,8 @@ namespace Ravc.Encoding.Impl
             }
         }
 
+        private volatile int cc;
+
         #region Compression
         public CompressedFrame Compress(UncompressedFrame frame)
         {
@@ -118,17 +120,25 @@ namespace Ravc.Encoding.Impl
             fixed (byte* source = frame.DataPooled.Item)
             fixed (byte* auxiliary = auxiliaryBuffer.Item)
             fixed (byte* partSizes = partSizesBuffer.Item)
-            fixed (byte* lut = blockEncodingWriteLut)
             fixed (byte* result = resultBuffer.Item)
             {
-                var lutLocal = lut;
+                if (frame.Info.OriginalWidth == 1280 && frame.Info.OriginalHeight == 720)
+                {
+                    cc++;
+                }
+                if (frame.Info.OriginalWidth == 1280 && frame.Info.OriginalHeight == 720 && cc > 20)
+                {
+                    cc = 0;
+                }
+
+                var lutLocal = (byte*)0;
                 WriteFrameInfo(frame, result);
                 var partInfos = partInfoBuffer.Item;
                 FillPartInfosForCompression(partInfos, frame.Info, source, auxiliary, result);
                 var compressedPartSizesTable = (int*)partSizes;
-                //for (int i = 0; i < PartCount; i++)
-                Parallel.For(0, PartCount, i =>
-                    CompressPart(i, partInfos, lutLocal, compressedPartSizesTable));
+                for (int i = 0; i < PartCount; i++)
+                //Parallel.For(0, PartCount, i =>
+                    CompressPart(i, partInfos, lutLocal, compressedPartSizesTable);//);
                 var partOffsetsTable = (int*)(result + CompressedFrameInfo.Size);
                 FillPartOffsetsTable(partOffsetsTable, compressedPartSizesTable);
                 PackCompressedParts(partInfos, result, partOffsetsTable, compressedPartSizesTable);
@@ -147,6 +157,7 @@ namespace Ravc.Encoding.Impl
             frameInfo->OriginalWidth = frame.Info.OriginalWidth;
             frameInfo->OriginalHeight = frame.Info.OriginalHeight;
             frameInfo->Type = frame.Info.Type;
+            frameInfo->MostDetailedMip = frame.Info.MostDetailedMip;
             frameInfo->Timestamp = frame.Info.Timestamp;
         }
 
@@ -212,7 +223,7 @@ namespace Ravc.Encoding.Impl
             fixed (byte* source = compressedFrame.DataPooled.Item)
             {
                 var compressedFrameInfo = *(CompressedFrameInfo*)source;
-                frameInfo = new FrameInfo(compressedFrameInfo.Type, compressedFrameInfo.Timestamp, compressedFrameInfo.OriginalWidth, compressedFrameInfo.OriginalHeight);
+                frameInfo = new FrameInfo(compressedFrameInfo.Type, compressedFrameInfo.Timestamp, compressedFrameInfo.MostDetailedMip, compressedFrameInfo.OriginalWidth, compressedFrameInfo.OriginalHeight);
             
                 resultBuffer = byteArrayPool.Extract(frameInfo.UncompressedSize);
             
@@ -226,9 +237,9 @@ namespace Ravc.Encoding.Impl
                     var partInfos = partInfoBuffer.Item;
                     var partOffsetsTable = (int*)(source + CompressedFrameInfo.Size);
                     FillPartInfosForDecompression(partInfos, frameInfo, source, auxiliary, result, partOffsetsTable);
-                    //for (int i = 0; i < PartCount; i++)
-                    Parallel.For(0, PartCount, i => 
-                        DecompressPart(i, partInfos, lutLocal));
+                    for (int i = 0; i < PartCount; i++)
+                    //Parallel.For(0, PartCount, i => 
+                        DecompressPart(i, partInfos, lutLocal);//);
                 }
                 auxiliaryBuffer.Release();
                 partInfoBuffer.Release();

@@ -47,6 +47,7 @@
     <Compile Include="ContextExtensions.cs" />
     <Compile Include="CpuDecompressionStage.cs" />
     <Compile Include="FileStreamReceiver.cs" />
+    <Compile Include="GpuMipCalculator.cs" />
     <Compile Include="GpuProcessingStage.cs" />
     <Compile Include="GpuSideDecoder.cs" />
     <Compile Include="GpuSideFrame.cs" />
