@@ -27,7 +27,8 @@ namespace Ravc.Client.OglLib
     public interface IClientSettings
     {
         bool IsEs { get; }
-        string TcpHostName { get; }
+        string PrimaryTcpHostName { get; }
+        string SecondaryTcpHostName { get; }
         int TcpPort { get; }
         bool FromFile { get; }
         int QueueCapacity { get; }

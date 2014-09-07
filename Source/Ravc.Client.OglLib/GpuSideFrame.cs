@@ -22,7 +22,6 @@ THE SOFTWARE.
 */
 #endregion
 
-using ObjectGL.Api.Objects.Resources;
 using Ravc.Utility;
 
 namespace Ravc.Client.OglLib
@@ -30,12 +29,12 @@ namespace Ravc.Client.OglLib
     public class GpuSideFrame
     {
         public FrameInfo Info { get; private set; }
-        public IPooled<ITexture2D> TexturePooled { get; private set; }
+        public IPooled<ManualMipChain> MipChainPooled { get; private set; }
 
-        public GpuSideFrame(FrameInfo info, IPooled<ITexture2D> texturePooled)
+        public GpuSideFrame(FrameInfo info, IPooled<ManualMipChain> mipChainPooled)
         {
             Info = info;
-            TexturePooled = texturePooled;
+            MipChainPooled = mipChainPooled;
         }
     }
 }

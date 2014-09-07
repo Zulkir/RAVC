@@ -44,7 +44,7 @@ namespace Ravc.Host.WinLib
         private readonly TexturePool texturePool;
         private readonly GpuChannelSwapper gpuChannelSwapper;
         private readonly GpuTemporalDiffCalculator gpuTemporalDiffCalculator;
-        private readonly GpuDiffMipGenerator gpuDiffMipGenerator;
+        private readonly GpuMipGenerator gpuMipGenerator;
         private readonly GpuSpatialDiffCalculator gpuSpatialDiffCalculator;
         private readonly GpuLossyCalculator gpuLossyCalculator;
         private readonly TextureRenderer textureRenderer;
@@ -66,7 +66,7 @@ namespace Ravc.Host.WinLib
             texturePool = new TexturePool(device, formatRgbaTypelessId, Usage.Default, BindFlags.ShaderResource | BindFlags.RenderTarget | BindFlags.UnorderedAccess, MiscFlags.GenerateMips);
             gpuChannelSwapper = new GpuChannelSwapper(device);
             gpuTemporalDiffCalculator = new GpuTemporalDiffCalculator(device);
-            gpuDiffMipGenerator = new GpuDiffMipGenerator(device);
+            gpuMipGenerator = new GpuMipGenerator(device);
             gpuSpatialDiffCalculator = new GpuSpatialDiffCalculator(device);
             gpuLossyCalculator = new GpuLossyCalculator(device);
             textureRenderer = new TextureRenderer(device);
@@ -120,13 +120,20 @@ namespace Ravc.Host.WinLib
             ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetUnorderedAccessView(0, null);
             ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(0, null);
 
-            context.GenerateMips(copyTex.ViewAsShaderResource(formatRgbaUnormId, 0, copyTex.MipLevels));
+            //context.GenerateMips(copyTex.ViewAsShaderResource(formatRgbaUnormSrgbId, 0, copyTex.MipLevels));
+            gpuMipGenerator.GenerateMips(context, copyTex, copyTex.MipLevels);
+
+            ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetUnorderedAccessView(0, null);
+            ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(0, null);
+            context.ComputeStage.UnorderedAccessResources[0] = null;
+
+            //textureRenderer.Render(context, context.Device.PrimarySwapChain.GetCurrentColorBuffer(), copyTex, 6);
 
             capturedFramePooled.Release();
 
             var temporalDiffPooled = texturePool.Extract(width, height);
             var temporalDiffTex = temporalDiffPooled.Item;
-            gpuTemporalDiffCalculator.CalculateDiff(context, temporalDiffTex, copyTex, prevFrameTexPooled != null ? prevFrameTexPooled.Item : blackTex);
+            gpuTemporalDiffCalculator.CalculateDiff(context, temporalDiffTex, copyTex, prevFrameTexPooled != null ? prevFrameTexPooled.Item : blackTex, input.Info.ColorDiffThreshold);
 
             ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetUnorderedAccessView(0, null);
             ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(0, null);
@@ -138,12 +145,10 @@ namespace Ravc.Host.WinLib
             var spatialDiffTex = spatialDiffPooled.Item;
             gpuSpatialDiffCalculator.CalculateDiff(context, spatialDiffTex, temporalDiffTex, input.Info.MostDetailedMip);
 
-            
+            //textureRenderer.Render(context, context.Device.PrimarySwapChain.GetCurrentColorBuffer(), spatialDiffTex, input.Info.MostDetailedMip);
 
-            var decodedTemporalDiffPooled = texturePool.Extract(width, height);
-            gpuSpatialDiffCalculator.Revert(context, decodedTemporalDiffPooled.Item, spatialDiffPooled.Item, input.Info.MostDetailedMip);
-
-            //textureRenderer.Render(context, context.Device.PrimarySwapChain.GetCurrentColorBuffer(), spatialDiffPooled.Item.ViewAsShaderResource(formatRgbaUnormId, input.Info.MostDetailedMip, 1), width, height);
+            //var decodedTemporalDiffPooled = texturePool.Extract(width, height);
+            //gpuSpatialDiffCalculator.Revert(context, decodedTemporalDiffPooled.Item, spatialDiffPooled.Item, input.Info.MostDetailedMip);
 
             var encodedFrame = new GpuEncodedFrame(input.Info, spatialDiffPooled);
             nextStage.Consume(encodedFrame);
@@ -154,14 +159,14 @@ namespace Ravc.Host.WinLib
             if (prevFrameTexPooled != null)
             {
                 var lossyPooled = texturePool.Extract(width, height);
-                gpuLossyCalculator.CalculateLossy(context, lossyPooled.Item, prevFrameTexPooled.Item, decodedTemporalDiffPooled.Item, input.Info.MostDetailedMip);
+                gpuLossyCalculator.CalculateLossy(context, lossyPooled.Item, prevFrameTexPooled.Item, temporalDiffPooled.Item, input.Info.MostDetailedMip);
                 prevFrameTexPooled.Release();
                 prevFrameTexPooled = lossyPooled;
             }
             else
             {
                 prevFrameTexPooled = texturePool.Extract(width, height);
-                gpuLossyCalculator.CalculateLossy(context, prevFrameTexPooled.Item, blackTex, decodedTemporalDiffPooled.Item, input.Info.MostDetailedMip);
+                gpuLossyCalculator.CalculateLossy(context, prevFrameTexPooled.Item, blackTex, temporalDiffPooled.Item, input.Info.MostDetailedMip);
             }
 
             ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetUnorderedAccessView(0, null);
@@ -169,11 +174,12 @@ namespace Ravc.Host.WinLib
             ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(1, null);
 
             temporalDiffPooled.Release();
-            decodedTemporalDiffPooled.Release();
+            //decodedTemporalDiffPooled.Release();
 
-            context.GenerateMips(prevFrameTexPooled.Item.ViewAsShaderResource(formatRgbaUnormId, 0, prevFrameTexPooled.Item.MipLevels));
+            //context.GenerateMips(prevFrameTexPooled.Item.ViewAsShaderResource(formatRgbaUnormId, 0, prevFrameTexPooled.Item.MipLevels));
+            gpuMipGenerator.GenerateMips(context, prevFrameTexPooled.Item, prevFrameTexPooled.Item.MipLevels);
 
-            textureRenderer.Render(context, context.Device.PrimarySwapChain.GetCurrentColorBuffer(), prevFrameTexPooled.Item.ViewAsShaderResource(formatRgbaUnormId, 0, 1), width, height);
+            //textureRenderer.Render(context, context.Device.PrimarySwapChain.GetCurrentColorBuffer(), prevFrameTexPooled.Item.ViewAsShaderResource(formatRgbaUnormId, 0, 1), width, height);
         }
     }
 }

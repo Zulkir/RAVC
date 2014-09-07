@@ -124,7 +124,7 @@ float2 TexCoord : SDX9 = TEXCOORD,  SDX10 = %name, SGL3 = %name
             
         }
 
-        protected void SetNonPixelStages(IDeviceContext context, IRenderTargetView target, int width, int height)
+        protected void SetNonPixelStages(IDeviceContext context, IRenderTargetView target)
         {
             context.ShadersForDrawing = shaderCombination;
 
@@ -133,7 +133,7 @@ float2 TexCoord : SDX9 = TEXCOORD,  SDX10 = %name, SGL3 = %name
             context.InputAssembler.VertexSources[0] = new VertexSource(vertexBuffer, 0, 4 * sizeof(float));
             context.InputAssembler.IndexSource = new IndexSource(indexBuffer, 0, IndexFormat.SixteenBit);
 
-            context.Rasterizer.Viewports.Set(new Viewport(0, 0, width, height));
+            context.Rasterizer.Viewports.Set(new Viewport(0, 0, target.Width, target.Height));
             context.Rasterizer.State = rasterizerState;
 
             context.OutputMerger.RenderTargets.Set(target);

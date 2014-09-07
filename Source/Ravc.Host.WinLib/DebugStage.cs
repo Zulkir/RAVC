@@ -51,8 +51,7 @@ namespace Ravc.Host.WinLib
         {
             var context = device.ImmediateContext;
             var diffTex = input.DiffPooled.Item;
-            var diffSrv = diffTex.ViewAsShaderResource(formatId, 0, 1 /*diffTex.MipLevels*/);
-            textureRenderer.Render(context, context.Device.PrimarySwapChain.GetCurrentColorBuffer(), diffSrv, diffTex.Width, diffTex.Height);
+            textureRenderer.Render(context, context.Device.PrimarySwapChain.GetCurrentColorBuffer(), diffTex, input.Info.MostDetailedMip);
             nextStage.Consume(input);
         }
     }

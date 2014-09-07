@@ -31,7 +31,7 @@ using Ravc.Client.OglLib.Pcl;
 
 namespace Ravc.Client.OglLib
 {
-    public class GpuSideDecoder
+    public class GpuDebugger
     {
         [StructLayout(LayoutKind.Sequential)]
         private struct Vertex
@@ -55,7 +55,7 @@ namespace Ravc.Client.OglLib
         private readonly IBuffer mipInfoBuffer;
         private readonly ISampler sampler;
 
-        private const string DesktopHeader = 
+        private const string DesktopHeader =
 @"#version 150";
         private const string EsHeader =
 @"#version 300 es
@@ -81,50 +81,38 @@ layout(std140) uniform MipInfoBuffer
     int CoordDivisor;
 };
 
-uniform sampler2D DiffTexture;
-uniform sampler2D PrevTexture;
+uniform sampler2D Texture0;
+uniform sampler2D Texture1;
 
 out vec4 out_color;
 
-const float AbsCoef = (255.0f/256.0f);
-const float NormCoef = (256.0f/255.0f);
-const vec3 One = vec3(1.0, 1.0, 1.0);
-
-float MaxComponent(vec3 value)
+float MaxValue(vec3 v)
 {
-    return max(max(value.x, value.y), value.z);
+    return max(max(v.x, v.y), v.z);
+}
+
+float MinValue(vec3 v)
+{
+    return min(min(v.x, v.y), v.z);
+}
+
+float GetError(float diff)
+{
+    return diff > 1.5/255.0 && diff < 1.0 ? 1.0 : 0.0;
 }
 
 void main()
 {
-    //ivec2 intCoord = ivec2(gl_FragCoord.xy);
-    //vec4 nDiff = texelFetch(DiffTexture, intCoord, 0);
-    //vec4 nPrev = texelFetch(PrevTexture, intCoord, 0);
-    //out_color = NormCoef * mod((AbsCoef * (nPrev + nDiff)), One);
-    //out_color = vec4(1.0, 0.0, 0.0, 1.0);
-
-    ivec2 pixelCoordDetailed = ivec2(gl_FragCoord.xy);
-    ivec2 pixelCoordMip = pixelCoordDetailed / CoordDivisor;
-
-    vec3 previousValueDetailed = texelFetch(PrevTexture, pixelCoordDetailed, 0).rgb;
-    vec3 previousValueMip = texelFetch(PrevTexture, pixelCoordMip, MipLevel).rgb;
-    vec3 encodedDiff = texelFetch(DiffTexture, pixelCoordMip, MipLevel).rgb;
-
-    vec3 valueMip = NormCoef * mod((AbsCoef * (previousValueMip + encodedDiff)), One);
-    vec3 diffMip = valueMip - previousValueMip;
-
-    float diffSize = MaxComponent(abs(diffMip));
-
-    vec3 lossyValue = diffSize < 32.0/256.0 ? clamp(previousValueDetailed + diffMip, vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0)) : valueMip;
-    //vec3 lossyValue = valueMip;
-    //vec3 lossyValue = encodedDiff;
-    //vec3 lossyValue = texelFetch(DiffTexture, pixelCoordDetailed, 0).rgb;
-
-    out_color = vec4(lossyValue, 1.0);
+    ivec2 coord = ivec2(gl_FragCoord.xy);
+    vec3 fetched = texelFetch(Texture0, coord, 0).rgb;
+    //vec3 value = (fetched - vec3(171.0/255.0, 205.0/255.0, 239.0/255.0)) * 64.0;
+    //vec3 value = vec3(GetError(fetched.x), GetError(fetched.y), GetError(fetched.z));
+    vec3 value = fetched;
+    out_color = vec4(value, 1.0);
 }
 ";
 
-        public GpuSideDecoder(IPclWorkarounds pclWorkarounds, IClientSettings settings, IContext context)
+        public GpuDebugger(IPclWorkarounds pclWorkarounds, IClientSettings settings, IContext context)
         {
             this.pclWorkarounds = pclWorkarounds;
             var header = settings.IsEs ? EsHeader : DesktopHeader;
@@ -135,8 +123,8 @@ void main()
                 VertexShaders = new[] { vertexShader },
                 FragmentShaders = new[] { fragmentShader },
                 VertexAttributeNames = new[] { "in_position" },
-                UniformBufferNames = new[] { "MipInfoBuffer" },
-                SamplerNames = new[] { "DiffTexture", "PrevTexture" }
+                //UniformBufferNames = new[] { "MipInfoBuffer" },
+                SamplerNames = new[] { "Texture0", "Texture1" }
             });
 
             var vertexBuffer = context.Create.Buffer(BufferTarget.ArrayBuffer, 4 * Vertex.Size, BufferUsageHint.StaticDraw, new[]
@@ -161,45 +149,41 @@ void main()
             mipInfoBuffer = context.Create.Buffer(BufferTarget.UniformBuffer, 16, BufferUsageHint.DynamicDraw);
 
             sampler = context.Create.Sampler();
-            sampler.SetMinFilter(TextureMinFilter.Nearest);
-            sampler.SetMagFilter(TextureMagFilter.Nearest);
-            sampler.SetWrapR(TextureWrapMode.Clamp);
-            sampler.SetWrapS(TextureWrapMode.Clamp);
-            sampler.SetWrapT(TextureWrapMode.Clamp);
         }
 
-        public unsafe void Decode(IContext context, ITexture2D target, ITexture2D texture, ITexture2D parentTexture, int mostDetailedMip)
+        public unsafe void Process(IContext context, ITexture2D target, ITexture2D texture0, ITexture2D texture1)
         {
+            //if (mostDetailedMip == 0)
+            //    return;
+
             var pipeline = context.Pipeline;
-
-            pipeline.Program = program;
             pipeline.VertexArray = vertexArray;
-
-            pipeline.Viewports[0].Set(target.Width, target.Height);
+            pipeline.Framebuffer = framebuffer;
             pipeline.Rasterizer.SetDefault();
             pipeline.Rasterizer.MultisampleEnable = false;
+            pipeline.DepthStencil.SetDefault();
+            pipeline.DepthStencil.DepthMask = false;
+            pipeline.Blend.SetDefault(false);
+            pipeline.Samplers[0] = sampler;
+            pipeline.Samplers[1] = sampler;
+            pipeline.UniformBuffers[0] = mipInfoBuffer;
 
-            framebuffer.AttachTextureImage(FramebufferAttachmentPoint.Color0, target, 0);
-            pipeline.Framebuffer = framebuffer;
+            //var currentTarget = working;
+            //var currentWorking = target;
+
+            pipeline.Viewports[0].Set(target.Width, target.Height);
 
             Vector4 mipInfoData;
             var mipInfoPtr = (int*)&mipInfoData;
-            mipInfoPtr[0] = mostDetailedMip;
-            mipInfoPtr[1] = 1 << mostDetailedMip;
+            mipInfoPtr[0] = 0;
+            mipInfoPtr[1] = 1;
             mipInfoBuffer.SetDataByMapping(pclWorkarounds, (IntPtr)mipInfoPtr);
 
-            pipeline.UniformBuffers[0] = mipInfoBuffer;
-            pipeline.Textures[0] = texture;
-            pipeline.Samplers[0] = sampler;
-            pipeline.Textures[1] = parentTexture;
-            pipeline.Samplers[1] = sampler;
+            pipeline.Program = program;
+            framebuffer.AttachTextureImage(FramebufferAttachmentPoint.Color0, target, 0);
+            pipeline.Textures[0] = texture0;
+            pipeline.Textures[1] = texture1;
 
-            pipeline.DepthStencil.SetDefault();
-            pipeline.DepthStencil.DepthMask = false;
-
-            pipeline.Blend.SetDefault(false);
-
-            //framebuffer.ClearColor(0, new Color4(0, 1, 0, 1));
             context.DrawElements(BeginMode.Triangles, 6, DrawElementsType.UnsignedShort, 0);
             framebuffer.DetachColorStartingFrom(0);
         }

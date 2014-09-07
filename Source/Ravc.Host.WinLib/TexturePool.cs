@@ -48,9 +48,9 @@ namespace Ravc.Host.WinLib
             this.formatId = formatId;
         }
 
-        protected override Dimensions GetDimensions(ITexture2D texture)
+        protected override Dimensions GetDimensions(ITexture2D mipChain)
         {
-            return new Dimensions(texture.Width, texture.Height);
+            return new Dimensions(mipChain.Width, mipChain.Height);
         }
 
         protected override ITexture2D CreateNew(int width, int height)
@@ -69,9 +69,9 @@ namespace Ravc.Host.WinLib
             });
         }
 
-        protected override void Delete(ITexture2D texture)
+        protected override void Delete(ITexture2D mipChain)
         {
-            texture.Dispose();
+            mipChain.Dispose();
         }
     }
 }

@@ -31,7 +31,8 @@ namespace Ravc.Client.OglDesktop
     public class ClientSettings : IClientSettings 
     {
         public bool IsEs { get { return false; } }
-        public string TcpHostName { get; private set; }
+        public string PrimaryTcpHostName { get; private set; }
+        public string SecondaryTcpHostName { get; private set; }
         public int TcpPort { get; private set; }
         public bool FromFile { get; private set; }
         public int QueueCapacity { get; private set; }
@@ -44,7 +45,8 @@ namespace Ravc.Client.OglDesktop
             {
                 using (var reader = new StreamReader("settings.txt"))
                 {
-                    TcpHostName = reader.ReadLine();
+                    PrimaryTcpHostName = reader.ReadLine();
+                    SecondaryTcpHostName = null;
                     TcpPort = int.Parse(reader.ReadLine());
                     FromFile = bool.Parse(reader.ReadLine());
                     QueueCapacity = int.Parse(reader.ReadLine());
@@ -54,7 +56,8 @@ namespace Ravc.Client.OglDesktop
             }
             catch
             {
-                TcpHostName = "127.0.0.1";
+                PrimaryTcpHostName = "127.0.0.1";
+                SecondaryTcpHostName = null;
                 TcpPort = 7123;
                 FromFile = false;
                 QueueCapacity = 5;

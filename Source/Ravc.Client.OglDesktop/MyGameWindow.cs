@@ -86,7 +86,8 @@ namespace Ravc.Client.OglDesktop
             cpuDecompressionStage = new CpuDecompressionStage(pclWorkarounds, statistics, byteArrayPool);
             var mainThreadBorderStage = new MainThreadBorderStage(statistics);
             var textureInitializer = new TextureInitializer();
-            var gpuProcessingStage = new GpuProcessingStage(pclWorkarounds, statistics, settings, context, textureInitializer);
+            var textureRenderer = new TextureRenderer(pclWorkarounds, settings, context);
+            var gpuProcessingStage = new GpuProcessingStage(pclWorkarounds, statistics, settings, context, textureInitializer, textureRenderer);
             var timedBufferingStage = new TimeBufferingStage(settings, statistics, context);
             mainLoop = new MainLoop(pclWorkarounds, statistics, settings, context, this, mainThreadBorderStage, timedBufferingStage, statisticsRenderer);
 

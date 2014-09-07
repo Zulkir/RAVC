@@ -46,7 +46,7 @@ namespace Ravc.Client.OglLib
             this.settings = settings;
             this.statistics = statistics;
             queue = new Queue<GpuSideFrame>();
-            current = new GpuSideFrame(new FrameInfo(FrameType.Absolute, 0.0f, 0, 64, 64), new TexturePool(context, new TextureInitializer(), false).Extract(64, 64));
+            current = new GpuSideFrame(new FrameInfo(FrameType.Absolute, 0.0f, 0, 0, 64, 64), new TexturePool(context, new TextureInitializer()).Extract(64, 64));
         }
 
         public void Consume(GpuSideFrame input)
@@ -62,7 +62,7 @@ namespace Ravc.Client.OglLib
             if (!initiationComplete)
             {
                 if (queue.Count < settings.TimeBufferInitiationLength)
-                    return current.TexturePooled.Item;
+                    return current.MipChainPooled.Item[0];
                 timeOffset = localTimestamp - queue.Peek().Info.Timestamp + settings.TimeOffsetOffset;
                 initiationComplete = true;
             }
@@ -71,7 +71,7 @@ namespace Ravc.Client.OglLib
             {
                 while (queue.Count > 0 && CanMoveNext(localTimestamp, queue.Peek().Info.Timestamp, timeOffset))
                 {
-                    current.TexturePooled.Release();
+                    current.MipChainPooled.Release();
                     current = queue.Dequeue();
                     statistics.OnTimeBufferQueue(queue.Count);
                     statistics.OnTimedFrameExtracted();
@@ -79,7 +79,7 @@ namespace Ravc.Client.OglLib
             }
             else if (queue.Count > 0 && CanMoveNext(localTimestamp, queue.Peek().Info.Timestamp, timeOffset))
             {
-                current.TexturePooled.Release();
+                current.MipChainPooled.Release();
                 current = queue.Dequeue();
                 statistics.OnTimeBufferQueue(queue.Count);
                 statistics.OnTimedFrameExtracted();
@@ -87,7 +87,7 @@ namespace Ravc.Client.OglLib
 
             statistics.OnTimeLag(CalculateTimeLag(localTimestamp, current.Info.Timestamp, timeOffset));
 
-            return current.TexturePooled.Item;
+            return current.MipChainPooled.Item[0];
         }
 
         private static double CalculateTimeLag(double localTimestamp, double frameTimestamp, double timeOffset)

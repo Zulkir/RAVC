@@ -89,11 +89,13 @@ int MaxComponent(int3 v)
 
     uint3 valueMip = (previousValueMip + encodedDiff) % White;
     int3 diffMip = valueMip - previousValueMip;
+    uint3 valueAdjusted = clamp(previousValueDetailed + diffMip, int3(0,0,0), int3(255,255,255));
     
     int diffSize = MaxComponent(abs(diffMip));
     
     // todo: to step()
-    uint3 lossyValue = diffSize < 32 ? clamp(previousValueDetailed + diffMip, int3(0,0,0), int3(255,255,255)) : valueMip;
+    int adjustStep = int(step(32.0, float(diffSize)));
+    uint3 lossyValue = (1 - adjustStep) * valueAdjusted + adjustStep * valueMip;
 
     Output[pixelCoordDetailed] = uint4(lossyValue, 255);
 ";

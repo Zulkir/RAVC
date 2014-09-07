@@ -40,15 +40,17 @@ namespace Ravc.Client.OglLib
         private readonly IContext context;
 
         private readonly TexturePool texturePool;
-        private readonly GpuSideDecoder gpuSideDecoder;
+        private readonly GpuFinalDecoder gpuFinalDecoder;
         private readonly GpuSpatialDiffCalculator gpuSpatialDiffCalculator;
         private readonly GpuMipCalculator gpuMipCalculator;
+        private readonly GpuDebugger gpuDebugger;
         private readonly ITextureInitializer textureInitializer;
-        private readonly ITexture2D blackTex;
+        private readonly TextureRenderer textureRenderer;
+
         private readonly Stopwatch stopwatch;
 
         private IPipelinedConsumer<GpuSideFrame> nextStage;
-        private IPooled<ITexture2D> prevTexPooled;
+        private IPooled<ManualMipChain> prevTexPooled;
         private IBuffer pixelUnpackBuffer;
         private int width;
         private int height;
@@ -56,22 +58,24 @@ namespace Ravc.Client.OglLib
         public IPipelinedConsumer<GpuSideFrame> NextStage { set { nextStage = value; } }
         public bool IsOverloaded { get { return nextStage.IsOverloaded; } }
 
-        private ITexture2D spatialDiffTex;
-        private ITexture2D temporalDiffTex;
-        private ITexture2D workingTex;
+        private ManualMipChain spatialDiffTex;
+        private ManualMipChain temporalDiffTex;
+        private ManualMipChain workingTex;
+        private ManualMipChain blackTex;
+        private ManualMipChain debugTex;
 
-        public GpuProcessingStage(IPclWorkarounds pclWorkarounds, IClientStatistics statistics, IClientSettings settings, IContext context, ITextureInitializer textureInitializer)
+        public GpuProcessingStage(IPclWorkarounds pclWorkarounds, IClientStatistics statistics, IClientSettings settings, IContext context, ITextureInitializer textureInitializer, TextureRenderer textureRenderer)
         {
             this.pclWorkarounds = pclWorkarounds;
             this.statistics = statistics;
             this.context = context;
             this.textureInitializer = textureInitializer;
-            texturePool = new TexturePool(context, textureInitializer, true);
-            gpuSideDecoder = new GpuSideDecoder(pclWorkarounds, settings, context);
+            this.textureRenderer = textureRenderer;
+            texturePool = new TexturePool(context, textureInitializer);
+            gpuFinalDecoder = new GpuFinalDecoder(pclWorkarounds, settings, context);
             gpuSpatialDiffCalculator = new GpuSpatialDiffCalculator(pclWorkarounds, settings, context);
             gpuMipCalculator = new GpuMipCalculator(pclWorkarounds, settings, context);
-
-            blackTex = context.Create.Texture2D(EncodingConstants.DimensionAlignment, EncodingConstants.DimensionAlignment, EncodingConstants.MipLevels, Format.Rgba8);
+            gpuDebugger = new GpuDebugger(pclWorkarounds, settings, context);
             stopwatch = new Stopwatch();
         }
 
@@ -85,18 +89,26 @@ namespace Ravc.Client.OglLib
 
                 if (spatialDiffTex != null)
                     spatialDiffTex.Dispose();
-                spatialDiffTex = context.Create.Texture2D(width, height, EncodingConstants.MipLevels, Format.Rgba8);
-                textureInitializer.InitializeTexture(spatialDiffTex);
+                spatialDiffTex = new ManualMipChain(context, width, height, Format.Rgba8);
 
                 if (temporalDiffTex != null)
                     temporalDiffTex.Dispose();
-                temporalDiffTex = context.Create.Texture2D(width, height, EncodingConstants.MipLevels, Format.Rgba8);
-                textureInitializer.InitializeTexture(temporalDiffTex);
+                temporalDiffTex = new ManualMipChain(context, width, height, Format.Rgba8);
 
                 if (workingTex != null)
                     workingTex.Dispose();
-                workingTex = context.Create.Texture2D(width, height, EncodingConstants.MipLevels, Format.Rgba8);
-                textureInitializer.InitializeTexture(workingTex);
+                workingTex = new ManualMipChain(context, width, height, Format.Rgba8);
+
+                if (debugTex != null)
+                    debugTex.Dispose();
+                debugTex = new ManualMipChain(context, width, height, Format.Rgba8);
+
+                if (blackTex != null)
+                    blackTex.Dispose();
+                blackTex = new ManualMipChain(context, width, height, Format.Rgba8);
+                var blackData = new byte[width * height * 4];
+                foreach (var level in blackTex.Levels)
+                    level.SetData(0, blackData, FormatColor.Rgba, FormatType.UnsignedByte);
 
                 if (prevTexPooled != null)
                     prevTexPooled.Release();
@@ -115,22 +127,23 @@ namespace Ravc.Client.OglLib
             for (int i = input.Info.MostDetailedMip; i < EncodingConstants.MipLevels; i++)
             {
                 //spatialDiffTex.SetData(i, (IntPtr)offset, FormatColor.Rgba, FormatType.UnsignedByte, pixelUnpackBuffer);
-                spatialDiffTex.SetData(i, (IntPtr)pData + offset, FormatColor.Rgba, FormatType.UnsignedByte);
+                spatialDiffTex.Levels[i].SetData(0, (IntPtr)pData + offset, FormatColor.Rgba, FormatType.UnsignedByte);
                 offset += (width >> i) * (height >> i) * 4;
             }
             stopwatch.Stop();
             statistics.OnGpuUpload(stopwatch.Elapsed.Milliseconds);
             
-            gpuSpatialDiffCalculator.ApplyDiff(context, temporalDiffTex, spatialDiffTex, workingTex, input.Info.MostDetailedMip);
+            gpuSpatialDiffCalculator.ApplyDiff(context, temporalDiffTex, spatialDiffTex, blackTex[EncodingConstants.SmallestMip], input.Info.MostDetailedMip);
 
             var resultPooled = texturePool.Extract(width, height);
             var parentTex = prevTexPooled != null ? prevTexPooled.Item : blackTex;
 
-            gpuMipCalculator.Decode(context, parentTex, workingTex, input.Info.MostDetailedMip);
-            //parentTex.GenerateMipmap();
+            gpuFinalDecoder.Decode(context, resultPooled.Item, temporalDiffTex, parentTex, input.Info.MostDetailedMip);
 
-            gpuSideDecoder.Decode(context, resultPooled.Item, temporalDiffTex, parentTex, input.Info.MostDetailedMip);
-            
+            gpuMipCalculator.GenerateMips(context, resultPooled.Item, input.Info.MostDetailedMip);
+
+            //var debugTexPooled = texturePool.Extract(width, height);
+            //gpuDebugger.Process(context, debugTexPooled.Item[0], resultPooled.Item[1], temporalDiffTex[1]);
 
             if (prevTexPooled != null)
                 prevTexPooled.Release();
@@ -139,6 +152,9 @@ namespace Ravc.Client.OglLib
 
             var gpuSideFrame = new GpuSideFrame(input.Info, resultPooled);
             nextStage.Consume(gpuSideFrame);
+
+            // remove from production
+            //resultPooled.Release();
         }
     }
 }

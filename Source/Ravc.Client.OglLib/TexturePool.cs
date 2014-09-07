@@ -22,7 +22,6 @@ THE SOFTWARE.
 */
 #endregion
 
-using ObjectGL;
 using ObjectGL.Api;
 using ObjectGL.Api.Objects.Resources;
 using Ravc.Infrastructure;
@@ -30,34 +29,33 @@ using Ravc.Utility;
 
 namespace Ravc.Client.OglLib
 {
-    public class TexturePool : TexturePoolBase<ITexture2D>
+    public class TexturePool : TexturePoolBase<ManualMipChain>
     {
         private readonly IContext context;
         private readonly ITextureInitializer textureInitializer;
-        private readonly bool withMipChain;
 
-        public TexturePool(IContext context, ITextureInitializer textureInitializer, bool withMipChain)
+        public TexturePool(IContext context, ITextureInitializer textureInitializer)
         {
             this.context = context;
             this.textureInitializer = textureInitializer;
-            this.withMipChain = withMipChain;
         }
 
-        protected override Dimensions GetDimensions(ITexture2D texture)
+        protected override Dimensions GetDimensions(ManualMipChain mipChain)
         {
-            return new Dimensions(texture.Width, texture.Height);
+            return new Dimensions(mipChain.Width, mipChain.Height);
         }
 
-        protected override ITexture2D CreateNew(int width, int height)
+        protected override ManualMipChain CreateNew(int width, int height)
         {
-            var texture = context.Create.Texture2D(width, height, withMipChain ? TextureHelper.CalculateMipCount(width, height, 1) : 1, Format.Rgba8);
-            textureInitializer.InitializeTexture(texture);
-            return texture;
+            var mipChain = new ManualMipChain(context, width, height, Format.Rgba8);
+            foreach (var level in mipChain.Levels)
+                textureInitializer.InitializeTexture(level);
+            return mipChain;
         }
 
-        protected override void Delete(ITexture2D texture)
+        protected override void Delete(ManualMipChain mipChain)
         {
-            texture.Dispose();
+            mipChain.Dispose();
         }
     }
 }

@@ -28,11 +28,10 @@ using ObjectGL.Api;
 using ObjectGL.Api.Objects;
 using ObjectGL.Api.Objects.Resources;
 using Ravc.Client.OglLib.Pcl;
-using Ravc.Encoding;
 
 namespace Ravc.Client.OglLib
 {
-    public class GpuSpatialDiffCalculator
+    public class GpuFinalDecoder
     {
         [StructLayout(LayoutKind.Sequential)]
         private struct Vertex
@@ -50,25 +49,24 @@ namespace Ravc.Client.OglLib
         }
 
         private readonly IPclWorkarounds pclWorkarounds;
-        private readonly IShaderProgram decodeProgram;
-        private readonly IShaderProgram stretchProgram;
+        private readonly IShaderProgram program;
         private readonly IVertexArray vertexArray;
         private readonly IFramebuffer framebuffer;
-        private readonly IBuffer stepInfoBuffer;
-        private readonly ISampler avgDiffsampler;
-        private readonly ISampler localDiffsampler;
+        private readonly IBuffer mipInfoBuffer;
+        private readonly ISampler sampler;
 
-        private const string DesktopHeader =
-@"#version 150";
+        private const string DesktopHeader = 
+@"#version 400";
         private const string EsHeader =
 @"#version 300 es
 
 precision highp float;
+precision highp int;
 precision highp sampler2D;";
 
         private const string VertexShaderText =
 @"
-in vec2 in_position;
+in vec4 in_position;
 
 void main()
 {
@@ -76,75 +74,83 @@ void main()
 }
 ";
 
-        private const string DecodeFragmentShaderText =
-@"
-uniform sampler2D AverageDiffTexture;
-uniform sampler2D LocalDiffTexture;
-
-out vec4 out_color;
-
-const float AbsCoef = (255.0f/256.0f);
-const float NormCoef = (256.0f/255.0f);
-const vec4 One = vec4(1.0, 1.0, 1.0, 1.0);
-
-void main()
-{
-    ivec2 intCoord = ivec2(gl_FragCoord.xy);
-    vec4 nAvgDiff = texelFetch(AverageDiffTexture, intCoord / 2, 0);
-    vec4 nLocalDiff = texelFetch(LocalDiffTexture, intCoord, 0);
-    out_color = NormCoef * mod((AbsCoef * (nAvgDiff + nLocalDiff)), One);
-    //out_color = vec4(1.0, 0.0, 0.0, 1.0);
-}
-";
-
-        private const string StretchFragmentShaderText =
+        private const string FragmentShaderText =
 @"
 layout(std140) uniform MipInfoBuffer
 {
-    int MostDetailedMip;
+    int MipLevel;
     int CoordDivisor;
 };
 
 uniform sampler2D DiffTexture;
+uniform sampler2D PrevTextureDetailed;
+uniform sampler2D PrevTextureMip;
 
 out vec4 out_color;
 
 const float AbsCoef = (255.0f/256.0f);
 const float NormCoef = (256.0f/255.0f);
-const vec4 One = vec4(1.0, 1.0, 1.0, 1.0);
+const vec3 One = vec3(1.0, 1.0, 1.0);
+
+float MaxComponent(vec3 value)
+{
+    return max(max(value.x, value.y), value.z);
+}
+
+ivec3 ToInt(vec3 v)
+{
+    return ivec3(v * 255.999);
+}
+
+vec3 ToFloat(ivec3 v)
+{
+    return vec3(v / 255);
+}
 
 void main()
 {
-    ivec2 intCoord = ivec2(gl_FragCoord.xy);
-    vec4 diff = texelFetch(DiffTexture, intCoord / CoordDivisor, MostDetailedMip);
-    out_color = diff;
-    //out_color = vec4(1.0, 0.0, 0.0, 1.0);
+    ivec2 pixelCoordDetailed = ivec2(gl_FragCoord.xy);
+    ivec2 pixelCoordMip = pixelCoordDetailed / CoordDivisor;
+    //ivec2 pixelCoordMip = ivec2(gl_FragCoord.xy / CoordDivisor);
+
+    vec3 previousValueDetailed = texelFetch(PrevTextureDetailed, pixelCoordDetailed, 0).rgb;
+    vec3 previousValueMip = texelFetch(PrevTextureMip, pixelCoordMip, 0).rgb;
+    vec3 encodedDiff = texelFetch(DiffTexture, pixelCoordMip, 0).rgb;
+
+    vec3 valueMip = NormCoef * mod((AbsCoef * (previousValueMip + encodedDiff)), 1.0);
+    vec3 diffMip = valueMip - previousValueMip;
+
+    float diffSize = MaxComponent(abs(diffMip));
+
+    vec3 lossyValue = diffSize < 31.5/255.0 ? clamp(previousValueDetailed + diffMip, vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0)) : valueMip;
+    //vec3 lossyValue = valueMip;
+
+    out_color = vec4(lossyValue, 1.0);
 }
 ";
 
-        public GpuSpatialDiffCalculator(IPclWorkarounds pclWorkarounds, IClientSettings settings, IContext context)
+        public GpuFinalDecoder(IPclWorkarounds pclWorkarounds, IClientSettings settings, IContext context)
         {
             this.pclWorkarounds = pclWorkarounds;
             var header = settings.IsEs ? EsHeader : DesktopHeader;
             var vertexShader = context.Create.VertexShader(header + VertexShaderText);
+            IFragmentShader fragmentShader = null; 
+            try
+            {
+                fragmentShader = context.Create.FragmentShader(header + FragmentShaderText);
+            }
+            catch (Exception ex)
+            {
+                int x = 0;
+            }
             
-            var decodeFragmentShader = context.Create.FragmentShader(header + DecodeFragmentShaderText);
-            decodeProgram = context.Create.Program(new ShaderProgramDescription
+            program = context.Create.Program(new ShaderProgramDescription
             {
                 VertexShaders = new[] { vertexShader },
-                FragmentShaders = new[] { decodeFragmentShader },
-                VertexAttributeNames = new[] { "in_position" },
-                SamplerNames = new[] { "AverageDiffTexture", "LocalDiffTexture" }
-            });
-
-            var stretchFragmentShader = context.Create.FragmentShader(header + StretchFragmentShaderText);
-            stretchProgram = context.Create.Program(new ShaderProgramDescription
-            {
-                VertexShaders = new[] { vertexShader },
-                FragmentShaders = new[] { stretchFragmentShader },
+                FragmentShaders = new[] { fragmentShader },
                 VertexAttributeNames = new[] { "in_position" },
                 UniformBufferNames = new[] { "MipInfoBuffer" },
-                SamplerNames = new[] { "DiffTexture" }
+                SamplerNames = new[] { "DiffTexture", "PrevTextureDetailed", "PrevTextureMip" }
             });
 
             var vertexBuffer = context.Create.Buffer(BufferTarget.ArrayBuffer, 4 * Vertex.Size, BufferUsageHint.StaticDraw, new[]
@@ -166,49 +172,46 @@ void main()
 
             framebuffer = context.Create.Framebuffer();
 
-            stepInfoBuffer = context.Create.Buffer(BufferTarget.UniformBuffer, 16, BufferUsageHint.StaticDraw);
+            mipInfoBuffer = context.Create.Buffer(BufferTarget.UniformBuffer, 16, BufferUsageHint.DynamicDraw);
 
-            avgDiffsampler = context.Create.Sampler();
-            localDiffsampler = context.Create.Sampler();
+            sampler = context.Create.Sampler();
         }
 
-        public unsafe void ApplyDiff(IContext context, ManualMipChain target, ManualMipChain spatialDiff, ITexture2D black, int mostDetailedMip)
+        public unsafe void Decode(IContext context, ManualMipChain target, ManualMipChain temporalDiff, ManualMipChain previous, int mostDetailedMip)
         {
             var pipeline = context.Pipeline;
 
+            pipeline.Program = program;
             pipeline.VertexArray = vertexArray;
-            
+
+            pipeline.Viewports[0].Set(target.Width, target.Height);
             pipeline.Rasterizer.SetDefault();
             pipeline.Rasterizer.MultisampleEnable = false;
-
-            pipeline.Framebuffer = framebuffer;
-            
-            pipeline.UniformBuffers[0] = stepInfoBuffer;
-            
-            pipeline.Samplers[0] = avgDiffsampler;
-            pipeline.Samplers[1] = localDiffsampler;
 
             pipeline.DepthStencil.SetDefault();
             pipeline.DepthStencil.DepthMask = false;
 
             pipeline.Blend.SetDefault(false);
 
-            pipeline.Program = decodeProgram;
+            framebuffer.AttachTextureImage(FramebufferAttachmentPoint.Color0, target[0], 0);
+            pipeline.Framebuffer = framebuffer;
 
-            for (int i = EncodingConstants.SmallestMip; i >= mostDetailedMip; i--)
-            {
-                Vector4 stepInfoBufferData;
-                *(int*)&stepInfoBufferData = i;
-                stepInfoBuffer.SetDataByMapping(pclWorkarounds, (IntPtr)(&stepInfoBufferData));
-            
-                framebuffer.AttachTextureImage(FramebufferAttachmentPoint.Color0, target[i], 0);
-                pipeline.Viewports[0].Set(spatialDiff.Width >> i, spatialDiff.Height >> i);
-                pipeline.Textures[0] = i == EncodingConstants.SmallestMip ? black : target[i + 1];
-                pipeline.Textures[1] = spatialDiff[i];
+            Vector4 mipInfoData;
+            var mipInfoPtr = (int*)&mipInfoData;
+            mipInfoPtr[0] = mostDetailedMip;
+            mipInfoPtr[1] = 1 << mostDetailedMip;
+            mipInfoBuffer.SetDataByMapping(pclWorkarounds, (IntPtr)mipInfoPtr);
 
-                context.DrawElements(BeginMode.Triangles, 6, DrawElementsType.UnsignedShort, 0);
-            }
+            pipeline.UniformBuffers[0] = mipInfoBuffer;
+            pipeline.Textures[0] = temporalDiff[mostDetailedMip];
+            pipeline.Samplers[0] = sampler;
+            pipeline.Textures[1] = previous[0];
+            pipeline.Samplers[1] = sampler;
+            pipeline.Textures[2] = previous[mostDetailedMip];
+            pipeline.Samplers[2] = sampler;
 
+            //framebuffer.ClearColor(0, new Color4(0, 1, 0, 1));
+            context.DrawElements(BeginMode.Triangles, 6, DrawElementsType.UnsignedShort, 0);
             framebuffer.DetachColorStartingFrom(0);
         }
     }

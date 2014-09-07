@@ -69,7 +69,7 @@ namespace Ravc.Host.Win8
                 throw new InvalidOperationException("ScreenCaptor11 can only work with SharpDX11 ICDevice");
             this.device = (ICDevice)device;
             dxgiOutput = ((COutput)device.Adapter.Outputs[0]).DXGIOutput.QueryInterface<Output1>();
-            workerThread = new Thread(DoWork);
+            //workerThread = new Thread(DoWork);
             texturePool = new TexturePool(device, device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.B8G8R8A8_UNORM).ID, Usage.Default, BindFlags.ShaderResource, MiscFlags.None);
             stopwatch = new Stopwatch();
         }
@@ -95,29 +95,23 @@ namespace Ravc.Host.Win8
                 duplication.Dispose();
         }
 
-        private void DoWork()
+        public bool TryGetCaptured(IDeviceContext context, IntRectangle clientRectangle, FrameType frameType, int colorDiffThreshold, int mostDetailedMip, out GpuRawFrame capturedFrame)
         {
-            while (isWorking)
-            {
-                DoCapture();
-            }
-        }
+            //var resultPooled2 = texturePool.Extract(clientRectangle.Width, clientRectangle.Height);
+            //var frameInfo2 = new FrameInfo(frameType, (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency, mostDetailedMip, clientRectangle.Width, clientRectangle.Height);
+            //capturedFrame = new GpuRawFrame(frameInfo2, resultPooled2);
+            //return true;
 
-        private void DoCapture()
-        {
             if (duplication == null)
                 duplication = dxgiOutput.DuplicateOutput(device.D3DDevice);
 
-            while (textureAwaitsProcessing)
-                Thread.Sleep(1);
-            
             stopwatch.Restart();
 
             if (ownsFrame)
                 duplication.ReleaseFrame();
 
             Resource dxgiResource;
-            duplication.AcquireNextFrame(10000, out dxgiFrameInfo, out dxgiResource);
+            duplication.AcquireNextFrame(100000, out dxgiFrameInfo, out dxgiResource);
             ownsFrame = true;
 
             stopwatch.Stop();
@@ -125,49 +119,8 @@ namespace Ravc.Host.Win8
 
             d3dTexture = dxgiResource.QueryInterface<Texture2D>();
             dxgiResource.Dispose();
-            textureAwaitsProcessing = true;
-        }
-
-        public bool TryGetCaptured(IDeviceContext context, IntRectangle clientRectangle, FrameType frameType, int mostDetailedMip, out GpuRawFrame capturedFrame)
-        {
-            //if (!textureAwaitsProcessing)
-            //{
-            //    capturedFrame = null;
-            //    return false;
-            //}
-
-            DoCapture();
-
-            //var d3dDesc = d3dTexture.Description;
-            //var desc = new Beholder.Resources.Texture2DDescription
-            //{
-            //    Width = d3dDesc.Width,
-            //    Height = d3dDesc.Height,
-            //    ArraySize = d3dDesc.ArraySize,
-            //    MipLevels = d3dDesc.MipLevels,
-            //    Sampling = new Sampling
-            //    {
-            //        Count = (ushort)d3dDesc.SampleDescription.Count,
-            //        Quality = (ushort)d3dDesc.SampleDescription.Quality
-            //    },
-            //    FormatID = (int)d3dDesc.Format,
-            //    BindFlags = (BindFlags)d3dDesc.BindFlags,
-            //    Usage = (Usage)d3dDesc.Usage,
-            //    MiscFlags = (MiscFlags)d3dDesc.MipLevels
-            //};
-            //var beholderTexture = new CTexture2D(device, d3dTexture, ref desc, x => { });
 
             var resultPooled = texturePool.Extract(clientRectangle.Width, clientRectangle.Height);
-            //context.CopySubresourceRegion(resultPooled.Item, 0, 0, 0, 0, beholderTexture, 0, new Box
-            //{
-            //    Left = clientRectangle.X,
-            //    Top = clientRectangle.Y,
-            //    Front = 0,
-            //    Right = Math.Min(clientRectangle.X + clientRectangle.Width, beholderTexture.Width),
-            //    Bottom = Math.Min(clientRectangle.Y + clientRectangle.Height, beholderTexture.Height),
-            //    Back = 1
-            //});
-            //beholderTexture.Dispose();
 
             ((CDeviceContext)context).D3DDeviceContext.CopySubresourceRegion(d3dTexture, 0, 
                 new ResourceRegion(
@@ -180,10 +133,9 @@ namespace Ravc.Host.Win8
                     ),
                 ((CTexture2D)resultPooled.Item).D3DTexture2D, 0);
             d3dTexture.Dispose();
-            textureAwaitsProcessing = false;
 
-            var timestamp = (float)dxgiFrameInfo.LastPresentTime / Stopwatch.Frequency;
-            var frameInfo = new FrameInfo(frameType, (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency, mostDetailedMip, clientRectangle.Width, clientRectangle.Height);
+            //var timestamp = (float)dxgiFrameInfo.LastPresentTime / Stopwatch.Frequency;
+            var frameInfo = new FrameInfo(frameType, (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency, mostDetailedMip, colorDiffThreshold, clientRectangle.Width, clientRectangle.Height);
             capturedFrame = new GpuRawFrame(frameInfo, resultPooled);
 
             return true;

@@ -23,10 +23,12 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Linq;
 using Beholder;
 using Beholder.Core;
 using Beholder.Libraries.SharpDX11.Core;
 using Beholder.Math;
+using Beholder.Platform;
 using Beholder.Resources;
 
 namespace Ravc.Host.WinLib
@@ -35,6 +37,7 @@ namespace Ravc.Host.WinLib
     {
         private readonly IBuffer dimensionsBuffer;
         private readonly ISamplerState samplerState;
+        private readonly int formatRgba8UnormId;
 
         const string PixelShaderText = @"
 %meta
@@ -88,14 +91,14 @@ static float3 Half = float3(0.5, 0.5, 0.5);
 
 
 %code_main
-    float3 val = sample(DiffuseTexture, INPUT(TexCoord)).rgb;
+    float3 realval = sample(DiffuseTexture, INPUT(TexCoord)).rgb;
 
-    //val = ((val + Half) % One) - Half;
-    //val = abs(val);
+    float3 val = ((realval + Half) % One) - Half;
+    val = abs(val);
     //val *= 64.0;
 
-    //float norm = max(val.x, max(val.y, val.z));
-    //
+    float norm = max(val.x, max(val.y, val.z));
+    
     //if (norm < 0.5 / 256)
     //    val = float3(0, 0, 0);
     //else if (norm < 1.5 / 256)
@@ -109,12 +112,13 @@ static float3 Half = float3(0.5, 0.5, 0.5);
 
     //val = val * 256;
     
-    //float a = sample(DiffuseTexture, INPUT(TexCoord)).a;
-    //val = norm < 0.5/256 ? float3(0,0,0) : a < 0.5/256 ? float3(1,0,0) : a < 1.5/256 ? float3(0,1,0) : a < 2.5/256 ? float3(0,0,1) : float3(1,1,1);
+    float a = sample(DiffuseTexture, INPUT(TexCoord)).a;
+    val = norm < 0.5/256 ? float3(0,0,0) : a < 0.5/256 ? float3(1,0,0) : a < 1.5/256 ? float3(0,1,0) : a < 2.5/256 ? float3(0,0,1) : float3(1,1,1);
 
     //val = norm < 0.5/256 ? float3(0,0,0) : float3(1,1,1);    
 
-    OUTPUT(Color) = float4(val, 1.0);
+    //OUTPUT(Color) = float4(val, 1.0);
+    OUTPUT(Color) = float4(realval, 1.0);
 ";
 
         public TextureRenderer(IDevice device)
@@ -129,7 +133,7 @@ static float3 Half = float3(0.5, 0.5, 0.5);
 
             samplerState = device.Create.SamplerState(new SamplerDescription
             {
-                Filter = Filter.MinMagMipPoint,
+                Filter = Filter.MinMagLinearMipPoint,
                 AddressU = TextureAddressMode.Clamp,
                 AddressV = TextureAddressMode.Clamp,
                 AddressW = TextureAddressMode.Clamp,
@@ -140,17 +144,20 @@ static float3 Half = float3(0.5, 0.5, 0.5);
                 MaximumLod = 3.402823466e+38f,
                 MinimumLod = -3.402823466e+38f
             });
+
+            formatRgba8UnormId = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D)
+                                .First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_UNORM).ID;
         }
 
-        public unsafe void Render(IDeviceContext context, IRenderTargetView target, IShaderResourceView texture, int width, int height)
+        public unsafe void Render(IDeviceContext context, IRenderTargetView target, ITexture2D texture, int mipLevel)
         {
-            SetNonPixelStages(context, target, width, height);
+            SetNonPixelStages(context, target);
 
-            var dimensions = new Vector2(width, height);
+            var dimensions = new Vector2(texture.Width, texture.Height);
             context.SetSubresourceData(dimensionsBuffer, 0, new SubresourceData((IntPtr)(&dimensions)));
 
             context.PixelStage.UniformBuffers[0] = dimensionsBuffer;
-            context.PixelStage.ShaderResources[0] = texture;
+            context.PixelStage.ShaderResources[0] = texture.ViewAsShaderResource(formatRgba8UnormId, mipLevel, 1);
             context.PixelStage.Samplers[0] = samplerState;
 
             Draw(context);

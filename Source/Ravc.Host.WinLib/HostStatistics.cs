@@ -67,7 +67,7 @@ namespace Ravc.Host.WinLib
             presentTime.AddValue(presentMs);
 
             frames++;
-            if (frameTime.Accumulated > 0.25)
+            if (frameTime.Accumulated > 1.0)
             {
                 form.lbFps.Text = FormatValue(1.0 / frameTime.Average);
                 form.lbSize.Text = string.Format("{0}x{1} ({2:0.##e+0})", width, height, width * height);

@@ -35,14 +35,16 @@ namespace Ravc.Client.OglLib
         private readonly ByteArrayPool byteArrayPool;
         private readonly IPclTcpClient tcpClient;
         private readonly byte[] metaDataBuffer;
-        private readonly string hostname;
+        private readonly string primaryHostname;
+        private readonly string secondaryHostname;
         private readonly int port;
 
         public TcpStreamReceiver(IPclWorkarounds pclWorkarounds, IClientSettings settings, ByteArrayPool byteArrayPool)
         {
             this.byteArrayPool = byteArrayPool;
             this.pclWorkarounds = pclWorkarounds;
-            hostname = settings.TcpHostName;
+            primaryHostname = settings.PrimaryTcpHostName;
+            secondaryHostname = settings.SecondaryTcpHostName;
             port = settings.TcpPort;
             tcpClient = pclWorkarounds.CreateTcpClient();
             metaDataBuffer = new byte[4];
@@ -52,7 +54,18 @@ namespace Ravc.Client.OglLib
 
         public void Start()
         {
-            tcpClient.Connect(hostname, port);
+            try
+            {
+                tcpClient.Connect(primaryHostname, port);
+            }
+            catch
+            {
+                if (secondaryHostname != null)
+                    tcpClient.Connect(secondaryHostname, port);
+                else
+                    throw;
+            }
+            
         }
 
         public StreamMessageType ReadMessageType()

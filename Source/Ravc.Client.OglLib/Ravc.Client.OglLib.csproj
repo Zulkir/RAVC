@@ -24,6 +24,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <UseVSHostingProcess>true</UseVSHostingProcess>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -47,9 +48,10 @@
     <Compile Include="ContextExtensions.cs" />
     <Compile Include="CpuDecompressionStage.cs" />
     <Compile Include="FileStreamReceiver.cs" />
+    <Compile Include="GpuDebugger.cs" />
     <Compile Include="GpuMipCalculator.cs" />
     <Compile Include="GpuProcessingStage.cs" />
-    <Compile Include="GpuSideDecoder.cs" />
+    <Compile Include="GpuFinalDecoder.cs" />
     <Compile Include="GpuSideFrame.cs" />
     <Compile Include="GpuSpatialDiffCalculator.cs" />
     <Compile Include="IClientSettings.cs" />
@@ -59,6 +61,7 @@
     <Compile Include="IRavcGameWindow.cs" />
     <Compile Include="IMainThreadBorderStage.cs" />
     <Compile Include="ITextureLoader.cs" />
+    <Compile Include="ManualMipChain.cs" />
     <Compile Include="OnScreenClientStatisticsRenderer.cs" />
     <Compile Include="Pcl\IPclTcpClient.cs" />
     <Compile Include="Pcl\IPclThread.cs" />

@@ -58,6 +58,7 @@ namespace Ravc.Client.Android
             gl = new AndroidGL();
             nativeGraphicsContext = new GameViewContext(this);
             assetManager = context.Assets;
+            KeepScreenOn = true;
         }
 
         // Copied from GLTriangle20 example
@@ -120,7 +121,8 @@ namespace Ravc.Client.Android
             cpuDecompressionStage = new CpuDecompressionStage(pclWorkarounds, statistics, byteArrayPool);
             var mainThreadBorderStage = new MainThreadBorderStage(statistics);
             var textureInitializer = new TextureInitializer();
-            var gpuProcessingStage = new GpuProcessingStage(pclWorkarounds, statistics, settings, context, textureInitializer);
+            var textureRenderer = new TextureRenderer(pclWorkarounds, settings, context);
+            var gpuProcessingStage = new GpuProcessingStage(pclWorkarounds, statistics, settings, context, textureInitializer, textureRenderer);
             var timedBufferingStage = new TimeBufferingStage(settings, statistics, context);
             mainLoop = new MainLoop(pclWorkarounds, statistics, settings, context, this, mainThreadBorderStage, timedBufferingStage, statisticsRenderer);
 

@@ -39,9 +39,10 @@ namespace Ravc.Encoding.Impl
             public int OriginalHeight;
             public FrameType Type;
             public int MostDetailedMip;
+            public int ColorDiffThreshold;
             public float Timestamp;
 
-            public const int Size = 4 * sizeof(int) + sizeof(float);
+            public const int Size = 5 * sizeof(int) + sizeof(float);
         }
 
         private struct PartInfo
@@ -158,6 +159,7 @@ namespace Ravc.Encoding.Impl
             frameInfo->OriginalHeight = frame.Info.OriginalHeight;
             frameInfo->Type = frame.Info.Type;
             frameInfo->MostDetailedMip = frame.Info.MostDetailedMip;
+            frameInfo->ColorDiffThreshold = frame.Info.ColorDiffThreshold;
             frameInfo->Timestamp = frame.Info.Timestamp;
         }
 
@@ -223,7 +225,7 @@ namespace Ravc.Encoding.Impl
             fixed (byte* source = compressedFrame.DataPooled.Item)
             {
                 var compressedFrameInfo = *(CompressedFrameInfo*)source;
-                frameInfo = new FrameInfo(compressedFrameInfo.Type, compressedFrameInfo.Timestamp, compressedFrameInfo.MostDetailedMip, compressedFrameInfo.OriginalWidth, compressedFrameInfo.OriginalHeight);
+                frameInfo = new FrameInfo(compressedFrameInfo.Type, compressedFrameInfo.Timestamp, compressedFrameInfo.MostDetailedMip, compressedFrameInfo.ColorDiffThreshold, compressedFrameInfo.OriginalWidth, compressedFrameInfo.OriginalHeight);
             
                 resultBuffer = byteArrayPool.Extract(frameInfo.UncompressedSize);
             

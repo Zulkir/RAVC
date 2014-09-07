@@ -29,7 +29,8 @@ namespace Ravc.Client.Android
     public class ClientSettings : IClientSettings
     {
         public bool IsEs { get { return true; } }
-        public string TcpHostName { get; private set; }
+        public string PrimaryTcpHostName { get; private set; }
+        public string SecondaryTcpHostName { get; private set; }
         public int TcpPort { get; private set; }
         public bool FromFile { get; private set; }
         public int QueueCapacity { get; private set; }
@@ -38,7 +39,8 @@ namespace Ravc.Client.Android
 
         public ClientSettings()
         {
-            TcpHostName = "192.168.1.218";
+            PrimaryTcpHostName = "192.168.1.14";
+            SecondaryTcpHostName = "192.168.42.154";
             TcpPort = 7123;
             FromFile = false;
             QueueCapacity = 10;

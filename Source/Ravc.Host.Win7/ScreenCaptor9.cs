@@ -84,7 +84,7 @@ namespace Ravc.Host.Win7
             direct3D.Dispose();
         }
 
-        public unsafe bool TryGetCaptured(IDeviceContext context, IntRectangle clientRectangle, FrameType frameType, int mostDetailedMip, out GpuRawFrame capturedFrame)
+        public unsafe bool TryGetCaptured(IDeviceContext context, IntRectangle clientRectangle, FrameType frameType, int colorDiffThreshold, int mostDetailedMip, out GpuRawFrame capturedFrame)
         {
             stopwatch.Restart();
 
@@ -107,7 +107,7 @@ namespace Ravc.Host.Win7
             context.Unmap(resultTexture, 0);
             d3dSurface1.UnlockRectangle();
 
-            var frameInfo = new FrameInfo(frameType, (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency, mostDetailedMip, clientRectangle.Width, clientRectangle.Height);
+            var frameInfo = new FrameInfo(frameType, (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency, mostDetailedMip, colorDiffThreshold, clientRectangle.Width, clientRectangle.Height);
             capturedFrame = new GpuRawFrame(frameInfo, result);
 
             stopwatch.Stop();

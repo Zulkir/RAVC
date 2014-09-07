@@ -37,9 +37,9 @@ namespace Ravc.Utility
             stack = new ConcurrentStack<PooledTexture<T>>();
         }
 
-        protected abstract Dimensions GetDimensions(T texture);
+        protected abstract Dimensions GetDimensions(T mipChain);
         protected abstract T CreateNew(int width, int height);
-        protected abstract void Delete(T texture);
+        protected abstract void Delete(T mipChain);
 
         public IPooled<T> Extract(int width, int height)
         {

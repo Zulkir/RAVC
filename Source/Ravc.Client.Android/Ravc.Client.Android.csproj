@@ -56,7 +56,6 @@
       <HintPath>..\..\Dependencies\ObjectGL.dll</HintPath>
     </Reference>
     <Reference Include="OpenTK" />
-    <Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />

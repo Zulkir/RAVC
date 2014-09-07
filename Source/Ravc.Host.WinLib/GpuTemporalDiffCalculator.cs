@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using Beholder;
 using Beholder.Core;
+using Beholder.Math;
 using Beholder.Platform;
 using Beholder.Resources;
 using Beholder.Shaders;
@@ -36,6 +37,7 @@ namespace Ravc.Host.WinLib
     public class GpuTemporalDiffCalculator
     {
         private readonly IComputeShader computeShader;
+        private readonly IBuffer frameInfoBuffer;
         private readonly int formatId;
 
         const string ComputeShaderText = @"
@@ -48,6 +50,10 @@ ThreadCountZ = 1
 
 %input
 int3 ThreadId : SDX10 = SV_DispatchThreadID
+
+%ubuffers
+ubuffer FrameInfo : slot = 0, slotGL3 = 0, slotDX9 = c0
+	float ColorDiffThreshold
 
 %srvs
 Texture2D <uint4> CurrentFrameTex : slot = 0
@@ -67,7 +73,7 @@ int MaxComponent(int3 value)
 %code_main
     int2 pixelCoord = INPUT(ThreadId).xy;
     int3 diff = CurrentFrameTex[pixelCoord].rgb - ParentFrameTex[pixelCoord].rgb;
-    int steppingZero = MaxComponent(abs(diff)) > 2 ? 1 : 0;
+    int steppingZero = step(ColorDiffThreshold, float(MaxComponent(abs(diff))));
     //int steppingZero = 1;
     uint3 endocedDiff = steppingZero * ((White + diff) % White);
     Output[pixelCoord] = uint4(endocedDiff, 255);
@@ -76,12 +82,24 @@ int MaxComponent(int3 value)
         public GpuTemporalDiffCalculator(IDevice device)
         {
             computeShader = device.Create.ComputeShader(ShaderParser.Parse(ComputeShaderText));
+            frameInfoBuffer = device.Create.Buffer(new BufferDescription
+            {
+                BindFlags = BindFlags.UniformBuffer,
+                Usage = Usage.Dynamic,
+                SizeInBytes = 16
+            });
             formatId = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_UINT).ID;
         }
 
-        public void CalculateDiff(IDeviceContext context, ITexture2D target, ITexture2D current, ITexture2D parentTexture)
+        public unsafe void CalculateDiff(IDeviceContext context, ITexture2D target, ITexture2D current, ITexture2D parentTexture, int colorDiffThreshold)
         {
             context.ShaderForDispatching = computeShader;
+
+            var map = context.Map(frameInfoBuffer, 0, MapType.WriteDiscard, MapFlags.None);
+            *(Vector4*)map.Data = new Vector4(colorDiffThreshold, 0, 0, 0);
+            context.Unmap(frameInfoBuffer, 0);
+
+            context.ComputeStage.UniformBuffers[0] = frameInfoBuffer;
 
             for (int i = 0; i < EncodingConstants.MipLevels; i++)
             {

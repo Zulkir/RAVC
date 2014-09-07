@@ -25,7 +25,9 @@ THE SOFTWARE.
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Threading;
 using Beholder;
+using Beholder.Libraries.SharpDX11.Platform;
 using Beholder.Math;
 using Beholder.Platform;
 using Ravc.Utility.DataStructures;
@@ -35,16 +37,23 @@ namespace Ravc.Host.WinLib
 {
     public class MainLoop : IPipelinedProvider<GpuRawFrame>, IDisposable
     {
-        //private static readonly int[] DetailSequence = new[] { 2, 1, 2, 1, 2, 1, 2, 0 };
-        //private static readonly int[] DetailSequence = new[] { 1, 1, 1, 1, 1, 1, 1, 1 };
-        //private static readonly int[] DetailSequence = new[] { 0 };
-        private static readonly int[] DetailSequence = new[] { 0, 1, 0, 0, 0, 0, 0, 0 };
+        private static readonly int[] DetailSequence = { 1, 1, 1, 1, 1, 1, 1, 0 };
+        //private static readonly int[] DetailSequence = { 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0 };
+        //private static readonly int[] DetailSequence = { 2, 1, 2, 1, 2, 1, 2, 0 };
+        //private static readonly int[] DetailSequence = { 1 };
+        //private static readonly int[] DetailSequence = { 0 };
+        //private static readonly int[] DetailSequence = new[] { 0, 1, 0, 0, 0, 0, 0, 0 };
+
+        private static readonly int[] DiffThresholdSequence = { 5, 2, 5, 0 };
 
         private readonly IHostStatistics statistics;
         private readonly IDevice device;
         private readonly IScreenCaptor screenCaptor;
         private readonly Stopwatch stopwatch;
+        private readonly bool isD3d11;
+        private double previousTimestamp;
         private int frameIndex;
+        private int processedFrameIndex;
         private IPipelinedConsumer<GpuRawFrame> nextStage;
         private IntSize oldSize;
 
@@ -56,6 +65,7 @@ namespace Ravc.Host.WinLib
             this.device = device;
             this.screenCaptor = screenCaptor;
             stopwatch = new Stopwatch();
+            isD3d11 = device.Adapter is CAdapter;
         }
 
         public void Dispose()
@@ -65,42 +75,70 @@ namespace Ravc.Host.WinLib
 
         public void OnNewFrame(IRealTime realTime)
         {
+            var context = device.ImmediateContext;
             var swapChain = device.PrimarySwapChain;
             if (swapChain.BeginScene())
             {
-                var focusedWindowHwnd = GetFocusedWindowHwnd();
-                RECT windowRect;
-                RECT clientRect;
-                Functions.GetWindowRect(focusedWindowHwnd, out windowRect);
-                Functions.GetClientRect(focusedWindowHwnd, out clientRect);
-                var beholderRect = new IntRectangle(
-                    Math.Max(windowRect.left, 0), 
-                    Math.Max(windowRect.top, 0), 
-                    Math.Max(clientRect.right - clientRect.left, 1), 
-                    Math.Max(clientRect.bottom - clientRect.top, 1));
-                var size = new IntSize(beholderRect.Width, beholderRect.Height);
-                if (!size.Equals(oldSize) && size.Width > 0 && size.Height > 0)
+                context.ClearRenderTargetView(swapChain.GetCurrentColorBuffer(), Color4.Black);
+
+                var newTimestamp = (double)Stopwatch.GetTimestamp() / Stopwatch.Frequency;
+                if (newTimestamp - previousTimestamp > 0.001)
                 {
-                    oldSize = size;
-                    statistics.OnResize(size.Width, size.Height);
+                    previousTimestamp = newTimestamp;
+
+                    var focusedWindowHwnd = GetFocusedWindowHwnd();
+                    RECT clientRect;
+                    var clientPoint = new POINT(0, 0);
+                    Functions.GetClientRect(focusedWindowHwnd, out clientRect);
+                    Functions.ClientToScreen(focusedWindowHwnd, ref clientPoint);
+                    var beholderRect = new IntRectangle(
+                        Math.Max(clientPoint.X, 0),
+                        Math.Max(clientPoint.Y, 0),
+                        Math.Max(clientRect.right - clientRect.left, 1),
+                        Math.Max(clientRect.bottom - clientRect.top, 1));
+                    var size = new IntSize(beholderRect.Width, beholderRect.Height);
+                    if (!size.Equals(oldSize) && size.Width > 0 && size.Height > 0)
+                    {
+                        oldSize = size;
+                        statistics.OnResize(size.Width, size.Height);
+                    }
+
+                    if (!isD3d11)
+                        context.ClearRenderTargetView(swapChain.GetCurrentColorBuffer(), Color4.CornflowerBlue);
+
+                    GpuRawFrame capturedFrame;
+                    if (screenCaptor.TryGetCaptured(context, beholderRect, FrameType.Relative,
+                        DiffThresholdSequence[processedFrameIndex % DiffThresholdSequence.Length],
+                        DetailSequence[processedFrameIndex % DetailSequence.Length], out capturedFrame))
+                    {
+                        if (frameIndex % 2 == 0)
+                        {
+                            stopwatch.Restart();
+                            nextStage.Consume(capturedFrame);
+                            stopwatch.Stop();
+                            statistics.OnGpuCalls(stopwatch.Elapsed.TotalMilliseconds);
+                            processedFrameIndex++;
+                        }
+                        else
+                        {
+                            capturedFrame.TexturePooled.Release();
+                        }
+                    }
                 }
-
-                var context = device.ImmediateContext;
-
-                context.ClearRenderTargetView(swapChain.GetCurrentColorBuffer(), Color4.CornflowerBlue);
-
-                GpuRawFrame capturedFrame;
-                if (screenCaptor.TryGetCaptured(context, beholderRect, FrameType.Relative, DetailSequence[frameIndex % DetailSequence.Length], out capturedFrame))
+                else
                 {
-                    stopwatch.Restart();
-                    nextStage.Consume(capturedFrame);
-                    stopwatch.Stop();
-                    statistics.OnGpuCalls(stopwatch.Elapsed.TotalMilliseconds);
+                    Thread.Sleep(1);
                 }
 
                 swapChain.EndScene();
 
                 stopwatch.Restart();
+                //swapChain.Present();
+                //var output = context.Device.Adapter.Outputs[0];
+                //if (output is COutput)
+                //    ((COutput)output).DXGIOutput.WaitForVerticalBlank();
+                //else
+                //    swapChain.Present();
                 swapChain.Present();
                 stopwatch.Stop();
                 statistics.OnPresent(realTime.ElapsedRealTime, stopwatch.Elapsed.TotalMilliseconds);

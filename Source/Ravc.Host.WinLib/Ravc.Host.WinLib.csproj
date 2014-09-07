@@ -21,6 +21,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <UseVSHostingProcess>true</UseVSHostingProcess>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -48,6 +49,10 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\Dependencies\SharpDX.Direct3D11.dll</HintPath>
     </Reference>
+    <Reference Include="SharpDX.DXGI, Version=2.6.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Dependencies\SharpDX.DXGI.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
@@ -70,7 +75,7 @@
     <Compile Include="FileStreamBroadcaster.cs" />
     <Compile Include="FullScreenQuadRendererBase.cs" />
     <Compile Include="GpuChannelSwapper.cs" />
-    <Compile Include="GpuDiffMipGenerator.cs" />
+    <Compile Include="GpuMipGenerator.cs" />
     <Compile Include="GpuEncodedFrame.cs" />
     <Compile Include="GpuLossyCalculator.cs" />
     <Compile Include="GpuProcessingStage.cs" />

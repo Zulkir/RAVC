@@ -58,11 +58,12 @@ namespace Ravc.Client.OglLib
         private readonly ISampler sampler;
 
         private const string DesktopHeader = 
-@"#version 150";
+@"#version 400";
         private const string EsHeader =
 @"#version 300 es
 
 precision highp float;
+precision highp int;
 precision highp sampler2D;";
 
         private const string VertexShaderText =
@@ -77,27 +78,35 @@ void main()
 
         private const string ShrinkFragmentShaderText =
 @"
-layout(std140) uniform MipInfoBuffer
-{
-    int MipLevel;
-};
-
 uniform sampler2D Source;
 
 out vec4 out_color;
 
+ivec3 ToInt(vec3 v)
+{
+    return ivec3(v * 255.999);
+}
+
+vec3 ToFloat(ivec3 v)
+{
+    return vec3(v) / 255.0;
+}
+
 void main()
 {
     ivec2 coord = ivec2(gl_FragCoord.xy) * 2;
-    vec3 topLeft = texelFetch(Source, coord, MipLevel - 1).rgb;
-    vec3 topRight = texelFetch(Source, ivec2(coord.x + 1, coord.y), MipLevel - 1).rgb;
-    vec3 bottomLeft = texelFetch(Source, ivec2(coord.x, coord.y + 1), MipLevel - 1).rgb;
-    vec3 bottomRight = texelFetch(Source, ivec2(coord.x + 1, coord.y + 1), MipLevel - 1).rgb;
+    vec3 topLeft = texelFetch(Source, coord, 0).rgb;
+    vec3 topRight = texelFetch(Source, ivec2(coord.x + 1, coord.y), 0).rgb;
+    vec3 bottomLeft = texelFetch(Source, ivec2(coord.x, coord.y + 1), 0).rgb;
+    vec3 bottomRight = texelFetch(Source, ivec2(coord.x + 1, coord.y + 1), 0).rgb;
     
-    vec3 averageColor = (topLeft + topRight + bottomLeft + bottomRight) / 4.0;
+    ivec3 sumInt = ToInt(topLeft) + ToInt(topRight) + ToInt(bottomLeft) + ToInt(bottomRight);
+    vec3 averageColor = ToFloat((sumInt) / 4);
 
     out_color = vec4(averageColor, 1.0);
     //out_color = vec4(1.0, 0.0, 0.0, 1.0);
+    //out_color = texelFetch(Source, coord, 0);
+    //out_color = vec4(0.0, 0.0, 0.0, 1.0);
 }
 ";
 
@@ -129,7 +138,6 @@ void main()
                 VertexShaders = new[] { vertexShader },
                 FragmentShaders = new[] { shrinkFragmentShader },
                 VertexAttributeNames = new[] { "in_position" },
-                UniformBufferNames = new[] { "MipInfoBuffer" },
                 SamplerNames = new[] { "Source" }
             });
             var copyFragmentShader = context.Create.FragmentShader(header + CopyFragmentShaderText);
@@ -164,14 +172,9 @@ void main()
             mipInfoBuffer = context.Create.Buffer(BufferTarget.UniformBuffer, 16, BufferUsageHint.DynamicDraw);
 
             sampler = context.Create.Sampler();
-            sampler.SetMinFilter(TextureMinFilter.Nearest);
-            sampler.SetMagFilter(TextureMagFilter.Nearest);
-            sampler.SetWrapR(TextureWrapMode.Clamp);
-            sampler.SetWrapS(TextureWrapMode.Clamp);
-            sampler.SetWrapT(TextureWrapMode.Clamp);
         }
 
-        public unsafe void Decode(IContext context, ITexture2D target, ITexture2D working, int mostDetailedMip)
+        public unsafe void GenerateMips(IContext context, ManualMipChain target, int mostDetailedMip)
         {
             //if (mostDetailedMip == 0)
             //    return;
@@ -200,16 +203,9 @@ void main()
                 mipInfoBuffer.SetDataByMapping(pclWorkarounds, (IntPtr)mipInfoPtr);
 
                 pipeline.Program = shrinkProgram;
-                framebuffer.AttachTextureImage(FramebufferAttachmentPoint.Color0, working, i);
-                pipeline.Textures[0] = target;
+                framebuffer.AttachTextureImage(FramebufferAttachmentPoint.Color0, target[i], 0);
+                pipeline.Textures[0] = target[i - 1];
                 
-                context.DrawElements(BeginMode.Triangles, 6, DrawElementsType.UnsignedShort, 0);
-                framebuffer.DetachColorStartingFrom(0);
-
-                pipeline.Program = copyProgram;
-                framebuffer.AttachTextureImage(FramebufferAttachmentPoint.Color0, target, i);
-                pipeline.Textures[0] = working;
-
                 context.DrawElements(BeginMode.Triangles, 6, DrawElementsType.UnsignedShort, 0);
                 framebuffer.DetachColorStartingFrom(0);
             }

@@ -23,15 +23,36 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using Beholder.Core;
-using Beholder.Math;
+using System.Collections.Generic;
+using ObjectGL.Api;
+using ObjectGL.Api.Objects.Resources;
+using Ravc.Encoding;
 
-namespace Ravc.Host.WinLib
+namespace Ravc.Client.OglLib
 {
-    public interface IScreenCaptor : IDisposable
+    public class ManualMipChain : IDisposable
     {
-        bool TryGetCaptured(IDeviceContext deviceContext, IntRectangle clientRectangle, FrameType frameType, int colorDiffThreshold, int mostDetailedMip, out GpuRawFrame capturedFrame);
-        void Start();
-        void Stop();
+        private readonly ITexture2D[] textures;
+
+        public ITexture2D this[int level] { get { return textures[level]; } }
+        public IReadOnlyList<ITexture2D> Levels { get { return textures; } }
+        public int Width { get { return textures[0].Width; } }
+        public int Height { get { return textures[0].Height; } }
+
+        public ManualMipChain(IContext context, int width, int height, Format format)
+        {
+            textures = new ITexture2D[EncodingConstants.MipLevels];
+            for (int i = 0; i < textures.Length; i++)
+                textures[i] = context.Create.Texture2D(width >> i, height >> i, 1, format);
+        }
+
+        public void Dispose()
+        {
+            for (int i = 0; i < textures.Length; i++)
+            {
+                textures[i].Dispose();
+                textures[i] = null;
+            }
+        }
     }
 }

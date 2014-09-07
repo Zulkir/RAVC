@@ -28,12 +28,11 @@ using Beholder.Core;
 using Beholder.Platform;
 using Beholder.Resources;
 using Beholder.Shaders;
-using Ravc.Encoding;
 using Ravc.Utility;
 
 namespace Ravc.Host.WinLib
 {
-    public class GpuDiffMipGenerator
+    public class GpuMipGenerator
     {
         private readonly IComputeShader computeShader;
         private readonly int formatId;
@@ -55,56 +54,40 @@ Texture2D <uint4> Source : slot = 0
 %uavs
 RWTexture2D <uint4> Output : slot = 0
 
-%code_global
-static int4 White = int4(256, 256, 256, 256);
-static int4 HalfWhite = int4(128, 128, 128, 128);
-static int2 Two = int2(2, 2);
-static float4 FloatWhite = float4(1.0, 1.0, 1.0, 1.0);
-static float4 FloatDivisor = float4(255.0, 255.0, 255.0, 255.0);
-static float4 FloatMultiplier = float4(255.999, 255.999, 255.999, 255.999);
-
-int4 DecodeDiff(uint4 v)
-{
-    return ((v + HalfWhite) % White - HalfWhite);
-}
-
-uint4 EncodeDiff(int4 v)
-{
-    return (v + White) % White;
-}
-
 %code_main
     int2 pixelCoord = INPUT(ThreadId).xy;
-    int2 topLeftCoord = pixelCoord * Two;
+    int2 topLeftCoord = pixelCoord * 2;
 
-    int4 topLeft = DecodeDiff(Source[topLeftCoord]);
-    int4 topRight = DecodeDiff(Source[int2(topLeftCoord.x + 1, topLeftCoord.y)]);
-    int4 bottomLeft = DecodeDiff(Source[int2(topLeftCoord.x, topLeftCoord.y + 1)]);
-    int4 bottomRight = DecodeDiff(Source[int2(topLeftCoord.x + 1, topLeftCoord.y + 1)]);
-
-    int4 average = (topLeft + topRight + bottomLeft + bottomRight) / 4;
-    Output[pixelCoord] = EncodeDiff(average);
+    uint4 topLeft = Source[topLeftCoord];
+    uint4 topRight = Source[int2(topLeftCoord.x + 1, topLeftCoord.y)];
+    uint4 bottomLeft = Source[int2(topLeftCoord.x, topLeftCoord.y + 1)];
+    uint4 bottomRight = Source[int2(topLeftCoord.x + 1, topLeftCoord.y + 1)];
+    
+    uint4 average = (topLeft + topRight + bottomLeft + bottomRight) / 4;
+    Output[pixelCoord] = uint4(average.rgb, 255);
+    //Output[pixelCoord] = Source[topLeftCoord];
+    //Output[pixelCoord] = uint4(0, 0, 0, 255);
 ";
 
-        public GpuDiffMipGenerator(IDevice device)
+        public GpuMipGenerator(IDevice device)
         {
             computeShader = device.Create.ComputeShader(ShaderParser.Parse(ComputeShaderText));
             formatId = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_UINT).ID;
         }
 
-        public void GenerateMips(IDeviceContext context, ITexture2D diffTexture)
+        public void GenerateMips(IDeviceContext context, ITexture2D target, int mipLevels)
         {
-            for (int i = 1; i < EncodingConstants.MipLevels; i++)
+            for (int i = 1; i < mipLevels; i++)
             {
-                var srv = diffTexture.ViewAsShaderResource(formatId, i - 1, 1);
-                var uav = diffTexture.ViewAsUnorderedAccessResource(formatId, i);
+                var srv = target.ViewAsShaderResource(formatId, i - 1, 1);
+                var uav = target.ViewAsUnorderedAccessResource(formatId, i);
 
                 context.ShaderForDispatching = computeShader;
 
                 context.ComputeStage.ShaderResources[0] = srv;
                 context.ComputeStage.UnorderedAccessResources[0] = uav;
 
-                context.Dispatch(RavcMath.DivideAndCeil(diffTexture.Width >> i, 16), RavcMath.DivideAndCeil(diffTexture.Height >> i, 16), 1);
+                context.Dispatch(RavcMath.DivideAndCeil(target.Width >> i, 16), RavcMath.DivideAndCeil(target.Height >> i, 16), 1);
             }
         }
     }

@@ -54,13 +54,14 @@ namespace Ravc.Client.OglLib
 
         public void OnNewFrame(double elapsedTime)
         {
-            context.ClearWindowColor(new Color4(0.4f, 0.6f, 0.9f, 1.0f));
+            //context.ClearWindowColor(new Color4(0.4f, 0.6f, 0.9f, 1.0f));
+            context.ClearWindowColor(new Color4(0.0f, 0.0f, 0.0f, 1.0f));
 
             mainThreadBorderStage.DoMainThreadProcessing();
             var textureToRender = finalFrameProvider.GetTextureToRender();
             textureRenderer.Render(context, textureToRender, gameWindow.ClientWidth, gameWindow.ClientHeight);
 
-            statisticsRenderer.Render(context);
+            //statisticsRenderer.Render(context);
 
             statistics.OnFrameRendered();
 
