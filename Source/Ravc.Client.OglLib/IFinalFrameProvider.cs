@@ -22,12 +22,10 @@ THE SOFTWARE.
 */
 #endregion
 
-using ObjectGL.Api.Objects.Resources;
-
 namespace Ravc.Client.OglLib
 {
     public interface IFinalFrameProvider
     {
-        ITexture2D GetTextureToRender();
+        GpuSideFrame GetFrameToRender();
     }
 }

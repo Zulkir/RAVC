@@ -97,7 +97,7 @@ namespace Ravc.Tests.Encoding
 
         private unsafe void DoTest(int width, int height, Func<int, uint> getPixel)
         {
-            var frameInfo = new FrameInfo(FrameType.Relative, 123456.789f, 0, 0, width, height);
+            var frameInfo = new FrameInfo(FrameType.Relative, 123456.789f, 0, 0, width, height, 0, 0);
             var uncompressedSizeInPixels = frameInfo.UncompressedSize / 4;
             var pixels = Enumerable.Range(0, uncompressedSizeInPixels).Select(getPixel).ToArray();
             FillAlpha(pixels);

@@ -47,6 +47,7 @@
     <Compile Include="ClientStatistics.cs" />
     <Compile Include="ContextExtensions.cs" />
     <Compile Include="CpuDecompressionStage.cs" />
+    <Compile Include="CursorRenderer.cs" />
     <Compile Include="FileStreamReceiver.cs" />
     <Compile Include="GpuDebugger.cs" />
     <Compile Include="GpuMipCalculator.cs" />

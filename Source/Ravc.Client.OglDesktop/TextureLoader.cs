@@ -22,6 +22,7 @@ THE SOFTWARE.
 */
 #endregion
 
+using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using ObjectGL.Api;
@@ -32,16 +33,30 @@ namespace Ravc.Client.OglDesktop
 {
     public class TextureLoader : ITextureLoader
     {
-        public ITexture2D LoadTexture(IContext context, string name)
+        public unsafe ITexture2D LoadTexture(IContext context, string name)
         {
             var bitmap = new Bitmap(@"../../Resources/Textures/" + name);
             var texture = context.Create.Texture2D(bitmap.Width, bitmap.Height, 1, Format.Rgba8);
-            var data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+            var bitmapData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+            var data = new Byte[bitmapData.Stride * bitmap.Height];
+            fixed (byte* pData = data)
             {
-                // todo: swap R-B and calculate mips ... if someone ever needs that here
-                texture.SetData(0, 0, 0, bitmap.Width, bitmap.Height, data.Scan0, FormatColor.Rgba, FormatType.UnsignedByte);
+                var dst = pData;
+                var src = (byte*)bitmapData.Scan0;
+
+                for (int i = 0; i < data.Length / 4; i++)
+                {
+                    dst[0] = src[2];
+                    dst[1] = src[1];
+                    dst[2] = src[0];
+                    dst[3] = src[3];
+                    dst += 4;
+                    src += 4;
+                }
+                texture.SetData(0, 0, 0, bitmap.Width, bitmap.Height, (IntPtr)pData, FormatColor.Rgba, FormatType.UnsignedByte);
             }
-            bitmap.UnlockBits(data);
+            bitmap.UnlockBits(bitmapData);
+            
             return texture;
         }
     }

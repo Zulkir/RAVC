@@ -34,12 +34,14 @@ namespace Ravc
         public int ColorDiffThreshold { get; private set; }
         public int OriginalWidth { get; private set; }
         public int OriginalHeight { get; private set; }
+        public int MouseX { get; private set; }
+        public int MouseY { get; private set; }
 
         public int AlignedWidth { get; private set; }
         public int AlignedHeight { get; private set; }
         public int UncompressedSize { get; private set; }
 
-        public FrameInfo(FrameType type, float timestamp, int mostDetailedMip, int colorDiffThreshold, int width, int height)
+        public FrameInfo(FrameType type, float timestamp, int mostDetailedMip, int colorDiffThreshold, int width, int height, int mouseX, int mouseY)
         {
             Type = type;
             Timestamp = timestamp;
@@ -47,6 +49,8 @@ namespace Ravc
             ColorDiffThreshold = colorDiffThreshold;
             OriginalWidth = width;
             OriginalHeight = height;
+            MouseX = mouseX;
+            MouseY = mouseY;
 
             AlignedWidth = AlignDimension(width);
             AlignedHeight = AlignDimension(height);

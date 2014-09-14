@@ -25,7 +25,6 @@ THE SOFTWARE.
 using System.Collections.Generic;
 using System.Diagnostics;
 using ObjectGL.Api;
-using ObjectGL.Api.Objects.Resources;
 using Ravc.Utility.DataStructures;
 
 namespace Ravc.Client.OglLib
@@ -46,7 +45,7 @@ namespace Ravc.Client.OglLib
             this.settings = settings;
             this.statistics = statistics;
             queue = new Queue<GpuSideFrame>();
-            current = new GpuSideFrame(new FrameInfo(FrameType.Absolute, 0.0f, 0, 0, 64, 64), new TexturePool(context, new TextureInitializer()).Extract(64, 64));
+            current = new GpuSideFrame(new FrameInfo(FrameType.Absolute, 0.0f, 0, 0, 64, 64, 0, 0), new TexturePool(context, new TextureInitializer()).Extract(64, 64));
         }
 
         public void Consume(GpuSideFrame input)
@@ -55,14 +54,14 @@ namespace Ravc.Client.OglLib
             statistics.OnTimeBufferQueue(queue.Count);
         }
 
-        public ITexture2D GetTextureToRender()
+        public GpuSideFrame GetFrameToRender()
         {
             var localTimestamp = (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency;
 
             if (!initiationComplete)
             {
                 if (queue.Count < settings.TimeBufferInitiationLength)
-                    return current.MipChainPooled.Item[0];
+                    return current;
                 timeOffset = localTimestamp - queue.Peek().Info.Timestamp + settings.TimeOffsetOffset;
                 initiationComplete = true;
             }
@@ -87,7 +86,7 @@ namespace Ravc.Client.OglLib
 
             statistics.OnTimeLag(CalculateTimeLag(localTimestamp, current.Info.Timestamp, timeOffset));
 
-            return current.MipChainPooled.Item[0];
+            return current;
         }
 
         private static double CalculateTimeLag(double localTimestamp, double frameTimestamp, double timeOffset)

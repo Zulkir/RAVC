@@ -39,7 +39,7 @@ namespace Ravc.Client.Android
 
         public ClientSettings()
         {
-            PrimaryTcpHostName = "192.168.1.14";
+            PrimaryTcpHostName = "192.168.1.17";
             SecondaryTcpHostName = "192.168.42.154";
             TcpPort = 7123;
             FromFile = false;

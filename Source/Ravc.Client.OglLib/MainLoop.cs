@@ -38,9 +38,10 @@ namespace Ravc.Client.OglLib
         private readonly IClientStatistics statistics;
         private readonly TextureRenderer textureRenderer;
         private readonly IClientStatisticsRenderer statisticsRenderer;
+        private readonly CursorRenderer cursorRenderer;
         private readonly Stopwatch stopwatch;
 
-        public MainLoop(IPclWorkarounds pclWorkarounds, IClientStatistics statistics, IClientSettings settings, IContext context, IRavcGameWindow gameWindow, IMainThreadBorderStage mainThreadBorderStage, IFinalFrameProvider finalFrameProvider, IClientStatisticsRenderer statisticsRenderer)
+        public MainLoop(IPclWorkarounds pclWorkarounds, IClientStatistics statistics, IClientSettings settings, IContext context, IRavcGameWindow gameWindow, IMainThreadBorderStage mainThreadBorderStage, IFinalFrameProvider finalFrameProvider, IClientStatisticsRenderer statisticsRenderer, ITextureLoader textureLoader)
         {
             this.context = context;
             this.statistics = statistics;
@@ -49,6 +50,7 @@ namespace Ravc.Client.OglLib
             this.finalFrameProvider = finalFrameProvider;
             this.statisticsRenderer = statisticsRenderer;
             textureRenderer = new TextureRenderer(pclWorkarounds, settings, context);
+            cursorRenderer = new CursorRenderer(settings, context, textureLoader);
             stopwatch = new Stopwatch();
         }
 
@@ -58,10 +60,11 @@ namespace Ravc.Client.OglLib
             context.ClearWindowColor(new Color4(0.0f, 0.0f, 0.0f, 1.0f));
 
             mainThreadBorderStage.DoMainThreadProcessing();
-            var textureToRender = finalFrameProvider.GetTextureToRender();
-            textureRenderer.Render(context, textureToRender, gameWindow.ClientWidth, gameWindow.ClientHeight);
+            var frameToRender = finalFrameProvider.GetFrameToRender();
+            textureRenderer.Render(context, gameWindow, frameToRender.MipChainPooled.Item[0]);
 
             //statisticsRenderer.Render(context);
+            cursorRenderer.Draw(context, gameWindow, frameToRender.MipChainPooled.Item[0], frameToRender.Info.MouseX, frameToRender.Info.MouseY);
 
             statistics.OnFrameRendered();
 

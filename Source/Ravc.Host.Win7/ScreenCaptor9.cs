@@ -107,7 +107,9 @@ namespace Ravc.Host.Win7
             context.Unmap(resultTexture, 0);
             d3dSurface1.UnlockRectangle();
 
-            var frameInfo = new FrameInfo(frameType, (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency, mostDetailedMip, colorDiffThreshold, clientRectangle.Width, clientRectangle.Height);
+            var frameInfo = new FrameInfo(frameType, (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency, 
+                mostDetailedMip, colorDiffThreshold, clientRectangle.Width, clientRectangle.Height,
+                Cursor.Position.X - clientRectangle.X, Cursor.Position.Y - clientRectangle.Y);
             capturedFrame = new GpuRawFrame(frameInfo, result);
 
             stopwatch.Stop();

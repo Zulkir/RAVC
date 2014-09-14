@@ -44,7 +44,7 @@ namespace Ravc.Client.Android
         public ITexture2D LoadTexture(IContext context, string name)
         {
             Bitmap bitmap;
-            using (var stream = assetManager.Open("DebugFont.png"))
+            using (var stream = assetManager.Open(name))
             {
                 bitmap = BitmapFactory.DecodeStream(stream);
             }

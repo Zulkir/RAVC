@@ -91,6 +91,7 @@
   </ItemGroup>
   <ItemGroup>
     <AndroidAsset Include="Assets\DebugFont.png" />
+    <AndroidAsset Include="Assets\Cursor.png" />
     <Content Include="Properties\AndroidManifest.xml" />
   </ItemGroup>
   <ItemGroup>

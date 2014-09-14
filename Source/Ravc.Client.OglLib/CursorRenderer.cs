@@ -27,38 +27,30 @@ using System.Runtime.InteropServices;
 using ObjectGL.Api;
 using ObjectGL.Api.Objects;
 using ObjectGL.Api.Objects.Resources;
-using Ravc.Client.OglLib.Pcl;
+using ObjectGL.Api.PipelineAspects;
 
 namespace Ravc.Client.OglLib
 {
-    public class TextureRenderer
+    public class CursorRenderer
     {
         [StructLayout(LayoutKind.Sequential)]
         private struct Vertex
         {
-            public Vector4 Position;
-            public Vector4 TexCoord;
+            public float PositionX;
+            public float PositionY;
+            public float TexCoordX;
+            public float TexCoordY;
 
-            public Vertex(float px, float py, float tx, float ty)
+            public Vertex(float posX, float poxY, float texX, float texY)
             {
-                Position.X = px;
-                Position.Y = py;
-                Position.Z = 0f;
-                Position.W = 0f;
-
-                TexCoord.X = tx;
-                TexCoord.Y = ty;
-                TexCoord.Z = 0f;
-                TexCoord.W = 0f;
+                PositionX = posX;
+                PositionY = poxY;
+                TexCoordX = texX;
+                TexCoordY = texY;
             }
 
-            public const int Size = 2 * 4 * sizeof(float);
+            public const int Size = 4 * sizeof(float);
         }
-
-        private readonly IPclWorkarounds pclWorkarounds;
-        private readonly IShaderProgram program;
-        private readonly IVertexArray vertexArray;
-        private readonly IBuffer dimensionsBuffer;
 
         private const string DesktopHeader =
 @"#version 150";
@@ -70,28 +62,21 @@ precision highp sampler2D;";
 
         private const string VertexShaderText =
 @"
-layout(std140) uniform DimensionsBuffer
-{
-    vec2 Dimensions;
-};
-
-in vec4 in_position;
-in vec4 in_tex_coord;
+in vec2 in_position;
+in vec2 in_tex_coord;
 
 out vec2 v_tex_coord;
 
 void main()
 {
-    gl_Position = vec4(in_position.x * Dimensions.x, -in_position.y * Dimensions.y, 0.0f, 1.0f);
-    v_tex_coord = in_tex_coord.xy;
+    gl_Position = vec4(in_position.xy, 0.0f, 1.0f);
+    v_tex_coord = in_tex_coord;
 }
 ";
 
-        private readonly ISampler sampler;
-
         private const string FragmentShaderText =
 @"
-uniform sampler2D DiffuseTexture;
+uniform sampler2D DiffTexture;
 
 in vec2 v_tex_coord;
 
@@ -99,15 +84,20 @@ out vec4 out_color;
 
 void main()
 {
-    vec2 correctTexCoord = vec2(v_tex_coord.x, 1.0 - v_tex_coord.y);
-    out_color = texture(DiffuseTexture, correctTexCoord);
-    //out_color = vec4(correctTexCoord, 0.0, 1.0);
+    vec3 val = texture(DiffTexture, v_tex_coord).rgb;
+    float a = 1.0 - abs(val.r - val.g);
+    float v = val.g;
+    out_color = vec4(v, v, v, a);
 }
 ";
 
-        public TextureRenderer(IPclWorkarounds pclWorkarounds, IClientSettings settings, IContext context)
+        private readonly ITexture2D texture;
+        private readonly IShaderProgram program;
+        private readonly IVertexArray vertexArray;
+        private readonly ISampler sampler;
+
+        public CursorRenderer(IClientSettings settings, IContext context, ITextureLoader textureLoader)
         {
-            this.pclWorkarounds = pclWorkarounds;
             var header = settings.IsEs ? EsHeader : DesktopHeader;
             var vertexShader = context.Create.VertexShader(header + VertexShaderText);
             var fragmentShader = context.Create.FragmentShader(header + FragmentShaderText);
@@ -116,8 +106,7 @@ void main()
                 VertexShaders = new[] { vertexShader },
                 FragmentShaders = new[] { fragmentShader },
                 VertexAttributeNames = new[] { "in_position", "in_tex_coord" },
-                UniformBufferNames = new[] { "DimensionsBuffer" },
-                SamplerNames = new[] { "DiffuseTexture" }
+                SamplerNames = new[] { "DiffTexture" }
             });
 
             var vertexBuffer = context.Create.Buffer(BufferTarget.ArrayBuffer, 4 * Vertex.Size, BufferUsageHint.StaticDraw, new[]
@@ -128,39 +117,49 @@ void main()
                 new Vertex(-1f, -1f, 0f, 1f)
             });
 
-            var elementArrayBuffer = context.Create.Buffer(BufferTarget.ElementArrayBuffer, 6 * sizeof(ushort), BufferUsageHint.StaticDraw, new ushort[]
+            var indexBuffer = context.Create.Buffer(BufferTarget.ElementArrayBuffer, 6 * sizeof(ushort), BufferUsageHint.StaticDraw, new ushort[]
             {
                 0, 1, 2, 0, 2, 3
             });
 
             vertexArray = context.Create.VertexArray();
             vertexArray.SetVertexAttributeF(0, vertexBuffer, VertexAttributeDimension.Two, VertexAttribPointerType.Float, false, Vertex.Size, 0);
-            vertexArray.SetVertexAttributeF(1, vertexBuffer, VertexAttributeDimension.Two, VertexAttribPointerType.Float, false, Vertex.Size, 4 * sizeof(float));
-            vertexArray.SetElementArrayBuffer(elementArrayBuffer);
+            vertexArray.SetVertexAttributeF(1, vertexBuffer, VertexAttributeDimension.Two, VertexAttribPointerType.Float, false, Vertex.Size, 2 * sizeof(float));
+            vertexArray.SetElementArrayBuffer(indexBuffer);
 
-            dimensionsBuffer = context.Create.Buffer(BufferTarget.UniformBuffer, 4 * sizeof(float), BufferUsageHint.DynamicDraw);
-
+            texture = textureLoader.LoadTexture(context, "Cursor.png");
             sampler = context.Create.Sampler();
-            sampler.SetMinFilter(TextureMinFilter.Linear);
-            sampler.SetMagFilter(TextureMagFilter.Linear);
+            sampler.SetMagFilter(TextureMagFilter.Nearest);
         }
 
-        public unsafe void Render(IContext context, IRavcGameWindow gameWindow, ITexture2D texture)
+        public unsafe void Draw(IContext context, IRavcGameWindow gameWindow, ITexture2D frameTexture, int x, int y)
         {
             var pipeline = context.Pipeline;
 
             pipeline.Program = program;
             pipeline.VertexArray = vertexArray;
 
-            pipeline.Viewports[0].Set(gameWindow.ClientWidth, gameWindow.ClientHeight);
+            var windowAspectRatio = (float)gameWindow.ClientWidth / Math.Max(gameWindow.ClientHeight, 1);
+            var textureAspectRatio = (float)frameTexture.Width / Math.Max(frameTexture.Height, 1);
+
+            int adjustedTextureWidth = gameWindow.ClientWidth;
+            int adjustedTextureHeight = gameWindow.ClientHeight;
+
+            if (windowAspectRatio > textureAspectRatio)
+                adjustedTextureWidth = (int)(gameWindow.ClientHeight * textureAspectRatio);
+            if (windowAspectRatio < textureAspectRatio)
+                adjustedTextureHeight = (int)(gameWindow.ClientWidth / textureAspectRatio);
+
+            int aspectOffsetX = (gameWindow.ClientWidth - adjustedTextureWidth) / 2;
+            int aspectOffsetY = (gameWindow.ClientHeight - adjustedTextureHeight) / 2;
+
+            int adjustedSize = texture.Width * adjustedTextureWidth / frameTexture.Width;
+
+            int viewportX = x * adjustedTextureWidth / frameTexture.Width + aspectOffsetX;
+            int viewportY = gameWindow.ClientHeight - (y * adjustedTextureHeight / frameTexture.Height + aspectOffsetY) - adjustedSize;
+            pipeline.Viewports[0].Set(viewportX, viewportY, adjustedSize, adjustedSize);
             pipeline.Rasterizer.SetDefault();
             pipeline.Rasterizer.MultisampleEnable = false;
-
-            pipeline.Framebuffer = null;
-
-            Vector4 dimensions = CalculateDimensions(texture, gameWindow.ClientWidth, gameWindow.ClientHeight);
-            dimensionsBuffer.SetDataByMapping(pclWorkarounds, (IntPtr)(&dimensions));
-            pipeline.UniformBuffers[0] = dimensionsBuffer;
 
             pipeline.Textures[0] = texture;
             pipeline.Samplers[0] = sampler;
@@ -169,20 +168,13 @@ void main()
             pipeline.DepthStencil.DepthMask = false;
 
             pipeline.Blend.SetDefault(false);
+            pipeline.Blend.BlendEnable = true;
+            pipeline.Blend.Targets[0].Color.SrcFactor = BlendFactor.SrcAlpha;
+            pipeline.Blend.Targets[0].Color.DestFactor = BlendFactor.OneMinusSrcAlpha;
+            pipeline.Blend.Targets[0].Alpha.SrcFactor = BlendFactor.SrcAlpha;
+            pipeline.Blend.Targets[0].Alpha.SrcFactor = BlendFactor.OneMinusSrcAlpha;
 
             context.DrawElements(BeginMode.Triangles, 6, DrawElementsType.UnsignedShort, 0);
-        }
-
-        private static Vector4 CalculateDimensions(ITexture2D texture, int windowWidth, int windowHeight)
-        {
-            var windowAspectRatio = (float)windowWidth / Math.Max(windowHeight, 1);
-            var textureAspectRatio = (float)texture.Width / Math.Max(texture.Height, 1);
-
-            if (windowAspectRatio > textureAspectRatio)
-                return new Vector4(textureAspectRatio / windowAspectRatio, 1.0f, 0.0f, 0.0f);
-            if (windowAspectRatio < textureAspectRatio)
-                return new Vector4(1.0f, windowAspectRatio / textureAspectRatio, 0.0f, 0.0f);
-            return new Vector4(1.0f, 1.0f, 0.0f, 0.0f);
         }
     }
 }

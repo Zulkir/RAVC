@@ -25,6 +25,7 @@ THE SOFTWARE.
 using System;
 using System.Diagnostics;
 using System.Threading;
+using System.Windows.Forms;
 using Beholder;
 using Beholder.Core;
 using Beholder.Libraries.SharpDX11;
@@ -135,7 +136,10 @@ namespace Ravc.Host.Win8
             d3dTexture.Dispose();
 
             //var timestamp = (float)dxgiFrameInfo.LastPresentTime / Stopwatch.Frequency;
-            var frameInfo = new FrameInfo(frameType, (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency, mostDetailedMip, colorDiffThreshold, clientRectangle.Width, clientRectangle.Height);
+            var frameInfo = new FrameInfo(frameType, (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency, 
+                mostDetailedMip, colorDiffThreshold, clientRectangle.Width, clientRectangle.Height,
+                //dxgiFrameInfo.PointerPosition.Position.X - clientRectangle.X, dxgiFrameInfo.PointerPosition.Position.Y - clientRectangle.Y);
+                Cursor.Position.X - clientRectangle.X, Cursor.Position.Y - clientRectangle.Y);
             capturedFrame = new GpuRawFrame(frameInfo, resultPooled);
 
             return true;

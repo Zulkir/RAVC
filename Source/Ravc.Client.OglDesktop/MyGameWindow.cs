@@ -89,7 +89,7 @@ namespace Ravc.Client.OglDesktop
             var textureRenderer = new TextureRenderer(pclWorkarounds, settings, context);
             var gpuProcessingStage = new GpuProcessingStage(pclWorkarounds, statistics, settings, context, textureInitializer, textureRenderer);
             var timedBufferingStage = new TimeBufferingStage(settings, statistics, context);
-            mainLoop = new MainLoop(pclWorkarounds, statistics, settings, context, this, mainThreadBorderStage, timedBufferingStage, statisticsRenderer);
+            mainLoop = new MainLoop(pclWorkarounds, statistics, settings, context, this, mainThreadBorderStage, timedBufferingStage, statisticsRenderer, textureLoader);
 
             //statisticsRenderer.ShowForm();
 

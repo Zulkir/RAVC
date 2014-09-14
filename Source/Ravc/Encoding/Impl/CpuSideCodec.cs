@@ -41,8 +41,10 @@ namespace Ravc.Encoding.Impl
             public int MostDetailedMip;
             public int ColorDiffThreshold;
             public float Timestamp;
+            public short MouseX;
+            public short MouseY;
 
-            public const int Size = 5 * sizeof(int) + sizeof(float);
+            public const int Size = 5 * sizeof(int) + sizeof(float) + 2 * sizeof(ushort);
         }
 
         private struct PartInfo
@@ -161,6 +163,8 @@ namespace Ravc.Encoding.Impl
             frameInfo->MostDetailedMip = frame.Info.MostDetailedMip;
             frameInfo->ColorDiffThreshold = frame.Info.ColorDiffThreshold;
             frameInfo->Timestamp = frame.Info.Timestamp;
+            frameInfo->MouseX = (short)frame.Info.MouseX;
+            frameInfo->MouseY = (short)frame.Info.MouseY;
         }
 
         private static void FillPartInfosForCompression(PartInfo[] partInfos, FrameInfo frameInfo, byte* source, byte* auxiliary, byte* result)
@@ -225,7 +229,9 @@ namespace Ravc.Encoding.Impl
             fixed (byte* source = compressedFrame.DataPooled.Item)
             {
                 var compressedFrameInfo = *(CompressedFrameInfo*)source;
-                frameInfo = new FrameInfo(compressedFrameInfo.Type, compressedFrameInfo.Timestamp, compressedFrameInfo.MostDetailedMip, compressedFrameInfo.ColorDiffThreshold, compressedFrameInfo.OriginalWidth, compressedFrameInfo.OriginalHeight);
+                frameInfo = new FrameInfo(compressedFrameInfo.Type, compressedFrameInfo.Timestamp, compressedFrameInfo.MostDetailedMip, 
+                    compressedFrameInfo.ColorDiffThreshold, compressedFrameInfo.OriginalWidth, compressedFrameInfo.OriginalHeight,
+                    compressedFrameInfo.MouseX, compressedFrameInfo.MouseY);
             
                 resultBuffer = byteArrayPool.Extract(frameInfo.UncompressedSize);
             
