@@ -83,8 +83,10 @@
     <Compile Include="GpuReadBackStage.cs" />
     <Compile Include="GpuSpatialDiffCalculator.cs" />
     <Compile Include="GpuTemporalDiffCalculator.cs" />
+    <Compile Include="HostGlobalEvents.cs" />
     <Compile Include="HostSettings.cs" />
     <Compile Include="HostStatistics.cs" />
+    <Compile Include="IHostGlobalEvents.cs" />
     <Compile Include="IHostSettings.cs" />
     <Compile Include="IHostStatistics.cs" />
     <Compile Include="IScreenCaptor.cs" />

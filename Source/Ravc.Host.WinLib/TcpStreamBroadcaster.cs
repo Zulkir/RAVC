@@ -36,6 +36,7 @@ namespace Ravc.Host.WinLib
 {
     public class TcpStreamBroadcaster : IStreamBroadcaster
     {
+        private readonly IHostGlobalEvents globalEvents;
         private readonly ConcurrentHashSet<TcpStreamBroadcasterClientProcessor> activeClients;
         private readonly ILogger logger;
         private readonly IPAddress localaddr;
@@ -44,8 +45,9 @@ namespace Ravc.Host.WinLib
         private Thread listenerThread;
         private volatile bool isRunning;
 
-        public TcpStreamBroadcaster(IHostSettings settings, ILogger logger)
+        public TcpStreamBroadcaster(IHostSettings settings, IHostGlobalEvents globalEvents, ILogger logger)
         {
+            this.globalEvents = globalEvents;
             this.logger = logger;
             localaddr = IPAddress.Parse(settings.TcpHostName);
             port = settings.TcpPort;
@@ -110,6 +112,8 @@ namespace Ravc.Host.WinLib
                             clientProcessor.Start();
                             if (!activeClients.TryAdd(clientProcessor))
                                 clientProcessor.Stop();
+                            else
+                                globalEvents.FireNewClientConnected();
                         }
                         catch (Exception ex)
                         {

@@ -56,16 +56,18 @@ namespace Ravc.Host.WinLib
         private int processedFrameIndex;
         private IPipelinedConsumer<GpuRawFrame> nextStage;
         private IntSize oldSize;
+        private volatile bool makeAbsoluteFrame;
 
         public IPipelinedConsumer<GpuRawFrame> NextStage { set { nextStage = value; } }
 
-        public MainLoop(IHostStatistics statistics, IDevice device, IScreenCaptor screenCaptor)
+        public MainLoop(IHostStatistics statistics, IHostGlobalEvents globalEvents, IDevice device, IScreenCaptor screenCaptor)
         {
             this.statistics = statistics;
             this.device = device;
             this.screenCaptor = screenCaptor;
             stopwatch = new Stopwatch();
             isD3d11 = device.Adapter is CAdapter;
+            globalEvents.NewClientConnected += () => { makeAbsoluteFrame = true; };
         }
 
         public void Dispose()
@@ -106,12 +108,20 @@ namespace Ravc.Host.WinLib
                     if (!isD3d11)
                         context.ClearRenderTargetView(swapChain.GetCurrentColorBuffer(), Color4.CornflowerBlue);
 
+                    var frameType = makeAbsoluteFrame ? FrameType.Absolute : FrameType.Relative;
+                    makeAbsoluteFrame = false;
+
+                    if (frameType == FrameType.Absolute)
+                    {
+                        int x = 0;
+                    }
+
                     GpuRawFrame capturedFrame;
-                    if (screenCaptor.TryGetCaptured(context, beholderRect, FrameType.Relative,
+                    if (screenCaptor.TryGetCaptured(context, beholderRect, frameType,
                         DiffThresholdSequence[processedFrameIndex % DiffThresholdSequence.Length],
                         DetailSequence[processedFrameIndex % DetailSequence.Length], out capturedFrame))
                     {
-                        if (frameIndex % 2 == 0)
+                        if (frameIndex % 2 == 0 || frameType == FrameType.Absolute)
                         {
                             stopwatch.Restart();
                             nextStage.Consume(capturedFrame);

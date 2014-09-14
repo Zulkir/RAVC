@@ -76,10 +76,11 @@ namespace Ravc.Host.Win7
 
             var logger = new FileLogger();
             var settings = new HostSettings();
+            var globalEvents = new HostGlobalEvents();
 
             var broadcaster = settings.FromFile 
                 ? (IStreamBroadcaster)new FileStreamBroadcaster() 
-                : new TcpStreamBroadcaster(settings, logger);
+                : new TcpStreamBroadcaster(settings, globalEvents, logger);
             var broadcastingStage = new BroadcastStage(broadcaster);
             var cpuSideCodec = new CpuSideCodec(pclWorkarounds, byteArrayPool);
             var cpuCompressionStage = new CpuCompressionStage(statistics, cpuSideCodec);
@@ -87,7 +88,7 @@ namespace Ravc.Host.Win7
             var debugStage = new DebugStage(device);
             var gpuProcessingStage = new GpuProcessingStage(device);
             var screenCaptor = new ScreenCaptor9(statistics, device);
-            var mainLoop = new MainLoop(statistics, device, screenCaptor);
+            var mainLoop = new MainLoop(statistics, globalEvents, device, screenCaptor);
 
             PipelineBuilder
                 .BeginWith(mainLoop)

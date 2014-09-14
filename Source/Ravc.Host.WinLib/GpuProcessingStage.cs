@@ -98,7 +98,7 @@ namespace Ravc.Host.WinLib
             var capturedFramePooled = input.TexturePooled;
             var capturedFrameTex = capturedFramePooled.Item;
 
-            if (input.Info.AlignedWidth != width || input.Info.AlignedHeight != height)
+            if (input.Info.Type == FrameType.Absolute || input.Info.AlignedWidth != width || input.Info.AlignedHeight != height)
             {
                 width = input.Info.AlignedWidth;
                 height = input.Info.AlignedHeight;
