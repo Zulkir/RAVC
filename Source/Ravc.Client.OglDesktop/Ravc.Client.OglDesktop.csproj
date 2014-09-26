@@ -37,18 +37,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ObjectGL, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Dependencies\ObjectGL.dll</HintPath>
-    </Reference>
-    <Reference Include="ObjectGL.GL4, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Dependencies\ObjectGL.GL4.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenTK, Version=1.1.0.0, Culture=neutral, PublicKeyToken=bad199fe84eb3df4, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Dependencies\OpenTK.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -59,6 +47,15 @@
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
+    <Reference Include="ObjectGL">
+      <HintPath>..\..\Dependencies\ObjectGL.dll</HintPath>
+    </Reference>
+    <Reference Include="ObjectGL.GL4">
+      <HintPath>..\..\Dependencies\ObjectGL.GL4.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenTK">
+      <HintPath>..\..\Dependencies\OpenTK.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ClientSettings.cs" />
@@ -102,11 +99,11 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Ravc.Client.OglLib\Ravc.Client.OglLib.csproj">
-      <Project>{94148416-ba24-4e5e-980e-57e415308984}</Project>
+      <Project>{94148416-BA24-4E5E-980E-57E415308984}</Project>
       <Name>Ravc.Client.OglLib</Name>
     </ProjectReference>
     <ProjectReference Include="..\Ravc\Ravc.csproj">
-      <Project>{c5d001c5-907c-4c4c-875a-f73ae3f6513f}</Project>
+      <Project>{C5D001C5-907C-4C4C-875A-F73AE3F6513F}</Project>
       <Name>Ravc</Name>
     </ProjectReference>
   </ItemGroup>

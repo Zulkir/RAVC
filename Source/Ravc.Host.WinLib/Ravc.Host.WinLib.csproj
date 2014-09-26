@@ -33,26 +33,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Beholder, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Dependencies\Beholder.dll</HintPath>
-    </Reference>
-    <Reference Include="Beholder.Libraries.SharpDX11, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Dependencies\Beholder.Libraries.SharpDX11.dll</HintPath>
-    </Reference>
-    <Reference Include="SharpDX, Version=2.6.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Dependencies\SharpDX.dll</HintPath>
-    </Reference>
-    <Reference Include="SharpDX.Direct3D11, Version=2.6.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Dependencies\SharpDX.Direct3D11.dll</HintPath>
-    </Reference>
-    <Reference Include="SharpDX.DXGI, Version=2.6.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Dependencies\SharpDX.DXGI.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
@@ -62,8 +42,22 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="Win32, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
+    <Reference Include="Beholder">
+      <HintPath>..\..\Dependencies\Beholder.dll</HintPath>
+    </Reference>
+    <Reference Include="Beholder.Libraries.SharpDX11">
+      <HintPath>..\..\Dependencies\Beholder.Libraries.SharpDX11.dll</HintPath>
+    </Reference>
+    <Reference Include="SharpDX">
+      <HintPath>..\..\Dependencies\SharpDX.dll</HintPath>
+    </Reference>
+    <Reference Include="SharpDX.Direct3D11">
+      <HintPath>..\..\Dependencies\SharpDX.Direct3D11.dll</HintPath>
+    </Reference>
+    <Reference Include="SharpDX.DXGI">
+      <HintPath>..\..\Dependencies\SharpDX.DXGI.dll</HintPath>
+    </Reference>
+    <Reference Include="Win32">
       <HintPath>..\..\Dependencies\Win32.dll</HintPath>
     </Reference>
   </ItemGroup>
@@ -113,7 +107,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Ravc\Ravc.csproj">
-      <Project>{c5d001c5-907c-4c4c-875a-f73ae3f6513f}</Project>
+      <Project>{C5D001C5-907C-4C4C-875A-F73AE3F6513F}</Project>
       <Name>Ravc</Name>
     </ProjectReference>
   </ItemGroup>
