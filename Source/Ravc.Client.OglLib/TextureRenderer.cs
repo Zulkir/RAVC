@@ -143,6 +143,9 @@ void main()
             sampler = context.Create.Sampler();
             sampler.SetMinFilter(TextureMinFilter.Linear);
             sampler.SetMagFilter(TextureMagFilter.Linear);
+			sampler.SetWrapR(TextureWrapMode.ClampToEdge);
+			sampler.SetWrapS(TextureWrapMode.ClampToEdge);
+			sampler.SetWrapT(TextureWrapMode.ClampToEdge);
         }
 
         public unsafe void Render(IContext context, IRavcGameWindow gameWindow, ITexture2D texture)
