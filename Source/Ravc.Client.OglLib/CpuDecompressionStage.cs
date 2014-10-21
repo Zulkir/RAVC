@@ -36,7 +36,7 @@ namespace Ravc.Client.OglLib
     {
         private readonly IPclWorkarounds pclWorkarounds;
         private readonly IClientStatistics statistics;
-        private readonly CpuSideCodec cpuSideCodec;
+        private readonly ICpuSideCodec cpuSideCodec;
         private readonly ConcurrentQueue<CompressedFrame> queue; 
         private readonly IPclThread workerThread;
         private readonly Stopwatch stopwatch;

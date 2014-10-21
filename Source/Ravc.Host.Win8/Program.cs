@@ -88,7 +88,7 @@ namespace Ravc.Host.Win8
             var debugStage = new DebugStage(device);
             var gpuProcessingStage = new GpuProcessingStage(device);
             //var screenCaptor = new ScreenCaptor9(statistics, device);
-            var screenCaptor = new ScreenCaptor11(statistics, logger, device);
+            var screenCaptor = new ScreenCaptor11(statistics, device);
             var mainLoop = new MainLoop(statistics, globalEvents, device, screenCaptor);
 
             PipelineBuilder
@@ -101,7 +101,6 @@ namespace Ravc.Host.Win8
 
             broadcaster.Start();
             cpuCompressionStage.Start();
-            screenCaptor.Start();
 
             eye.NewFrame += mainLoop.OnNewFrame;
 
@@ -113,7 +112,6 @@ namespace Ravc.Host.Win8
 
             cpuCompressionStage.Stop();
             broadcaster.Stop();
-            screenCaptor.Stop();
         }
     }
 }

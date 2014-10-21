@@ -24,7 +24,6 @@ THE SOFTWARE.
 
 using System;
 using System.Diagnostics;
-using System.Threading;
 using System.Windows.Forms;
 using Beholder;
 using Beholder.Core;
@@ -35,7 +34,6 @@ using Beholder.Libraries.SharpDX11.Resources;
 using Beholder.Math;
 using Beholder.Resources;
 using Ravc.Host.WinLib;
-using Ravc.Infrastructure;
 using SharpDX.DXGI;
 using SharpDX.Direct3D11;
 using System.Linq;
@@ -49,43 +47,24 @@ namespace Ravc.Host.Win8
     public class ScreenCaptor11 : IScreenCaptor
     {
         private readonly IHostStatistics statistics;
-        private readonly ILogger logger;
         private readonly ICDevice device;
         private readonly Output1 dxgiOutput;
-        private readonly Thread workerThread;
         private readonly TexturePool texturePool;
         private readonly Stopwatch stopwatch;
         private OutputDuplication duplication;
         private Texture2D d3dTexture;
         private OutputDuplicateFrameInformation dxgiFrameInfo;
         private volatile bool ownsFrame;
-        private volatile bool textureAwaitsProcessing;
-        private volatile bool isWorking;
 
-        public ScreenCaptor11(IHostStatistics statistics, ILogger logger, IDevice device)
+        public ScreenCaptor11(IHostStatistics statistics, IDevice device)
         {
             this.statistics = statistics;
-            this.logger = logger;
             if (!(device is ICDevice))
                 throw new InvalidOperationException("ScreenCaptor11 can only work with SharpDX11 ICDevice");
             this.device = (ICDevice)device;
             dxgiOutput = ((COutput)device.Adapter.Outputs[0]).DXGIOutput.QueryInterface<Output1>();
-            //workerThread = new Thread(DoWork);
             texturePool = new TexturePool(device, device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.B8G8R8A8_UNORM).ID, Usage.Default, BindFlags.ShaderResource, MiscFlags.None);
             stopwatch = new Stopwatch();
-        }
-
-        public void Start()
-        {
-            isWorking = true;
-            //workerThread.Start();
-        }
-
-        public void Stop()
-        {
-            isWorking = false;
-            textureAwaitsProcessing = false;
-            //workerThread.Join(2000);
         }
 
         public void Dispose()
@@ -98,11 +77,6 @@ namespace Ravc.Host.Win8
 
         public bool TryGetCaptured(IDeviceContext context, IntRectangle clientRectangle, FrameType frameType, int colorDiffThreshold, int mostDetailedMip, out GpuRawFrame capturedFrame)
         {
-            //var resultPooled2 = texturePool.Extract(clientRectangle.Width, clientRectangle.Height);
-            //var frameInfo2 = new FrameInfo(frameType, (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency, mostDetailedMip, clientRectangle.Width, clientRectangle.Height);
-            //capturedFrame = new GpuRawFrame(frameInfo2, resultPooled2);
-            //return true;
-
             if (duplication == null)
                 duplication = dxgiOutput.DuplicateOutput(device.D3DDevice);
 
@@ -135,10 +109,8 @@ namespace Ravc.Host.Win8
                 ((CTexture2D)resultPooled.Item).D3DTexture2D, 0);
             d3dTexture.Dispose();
 
-            //var timestamp = (float)dxgiFrameInfo.LastPresentTime / Stopwatch.Frequency;
             var frameInfo = new FrameInfo(frameType, (float)Stopwatch.GetTimestamp() / Stopwatch.Frequency, 
                 mostDetailedMip, colorDiffThreshold, clientRectangle.Width, clientRectangle.Height,
-                //dxgiFrameInfo.PointerPosition.Position.X - clientRectangle.X, dxgiFrameInfo.PointerPosition.Position.Y - clientRectangle.Y);
                 Cursor.Position.X - clientRectangle.X, Cursor.Position.Y - clientRectangle.Y);
             capturedFrame = new GpuRawFrame(frameInfo, resultPooled);
 

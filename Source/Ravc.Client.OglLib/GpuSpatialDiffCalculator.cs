@@ -23,7 +23,6 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Runtime.InteropServices;
 using ObjectGL.Api;
 using ObjectGL.Api.Objects;
 using ObjectGL.Api.Objects.Resources;
@@ -34,49 +33,14 @@ namespace Ravc.Client.OglLib
 {
     public class GpuSpatialDiffCalculator
     {
-        [StructLayout(LayoutKind.Sequential)]
-        private struct Vertex
-        {
-            public float PositionX;
-            public float PositionY;
-
-            public Vertex(float px, float py)
-            {
-                PositionX = px;
-                PositionY = py;
-            }
-
-            public const int Size = 2 * sizeof(float);
-        }
-
         private readonly IPclWorkarounds pclWorkarounds;
-        private readonly IShaderProgram decodeProgram;
-        private readonly IShaderProgram stretchProgram;
-        private readonly IVertexArray vertexArray;
+        private readonly FullTextureProcessor fullTextureProcessor;
         private readonly IFramebuffer framebuffer;
         private readonly IBuffer stepInfoBuffer;
         private readonly ISampler avgDiffsampler;
         private readonly ISampler localDiffsampler;
 
-        private const string DesktopHeader =
-@"#version 150";
-        private const string EsHeader =
-@"#version 300 es
-
-precision highp float;
-precision highp sampler2D;";
-
-        private const string VertexShaderText =
-@"
-in vec2 in_position;
-
-void main()
-{
-    gl_Position = vec4(in_position.x, -in_position.y, 0.0f, 1.0f);
-}
-";
-
-        private const string DecodeFragmentShaderText =
+        private const string FragmentShaderText =
 @"
 uniform sampler2D AverageDiffTexture;
 uniform sampler2D LocalDiffTexture;
@@ -97,77 +61,12 @@ void main()
 }
 ";
 
-        private const string StretchFragmentShaderText =
-@"
-layout(std140) uniform MipInfoBuffer
-{
-    int MostDetailedMip;
-    int CoordDivisor;
-};
-
-uniform sampler2D DiffTexture;
-
-out vec4 out_color;
-
-const float AbsCoef = (255.0f/256.0f);
-const float NormCoef = (256.0f/255.0f);
-const vec4 One = vec4(1.0, 1.0, 1.0, 1.0);
-
-void main()
-{
-    ivec2 intCoord = ivec2(gl_FragCoord.xy);
-    vec4 diff = texelFetch(DiffTexture, intCoord / CoordDivisor, MostDetailedMip);
-    out_color = diff;
-    //out_color = vec4(1.0, 0.0, 0.0, 1.0);
-}
-";
-
         public GpuSpatialDiffCalculator(IPclWorkarounds pclWorkarounds, IClientSettings settings, IContext context)
         {
             this.pclWorkarounds = pclWorkarounds;
-            var header = settings.IsEs ? EsHeader : DesktopHeader;
-            var vertexShader = context.Create.VertexShader(header + VertexShaderText);
-            
-            var decodeFragmentShader = context.Create.FragmentShader(header + DecodeFragmentShaderText);
-            decodeProgram = context.Create.Program(new ShaderProgramDescription
-            {
-                VertexShaders = new[] { vertexShader },
-                FragmentShaders = new[] { decodeFragmentShader },
-                VertexAttributeNames = new[] { "in_position" },
-                SamplerNames = new[] { "AverageDiffTexture", "LocalDiffTexture" }
-            });
-
-            var stretchFragmentShader = context.Create.FragmentShader(header + StretchFragmentShaderText);
-            stretchProgram = context.Create.Program(new ShaderProgramDescription
-            {
-                VertexShaders = new[] { vertexShader },
-                FragmentShaders = new[] { stretchFragmentShader },
-                VertexAttributeNames = new[] { "in_position" },
-                UniformBufferNames = new[] { "MipInfoBuffer" },
-                SamplerNames = new[] { "DiffTexture" }
-            });
-
-            var vertexBuffer = context.Create.Buffer(BufferTarget.ArrayBuffer, 4 * Vertex.Size, BufferUsageHint.StaticDraw, new[]
-            {
-                new Vertex(-1f, 1f),
-                new Vertex(1f, 1f),
-                new Vertex(1f, -1f),
-                new Vertex(-1f, -1f)
-            });
-
-            var elementArrayBuffer = context.Create.Buffer(BufferTarget.ElementArrayBuffer, 6 * sizeof(ushort), BufferUsageHint.StaticDraw, new ushort[]
-            {
-                0, 1, 2, 0, 2, 3
-            });
-
-            vertexArray = context.Create.VertexArray();
-            vertexArray.SetVertexAttributeF(0, vertexBuffer, VertexAttributeDimension.Two, VertexAttribPointerType.Float, false, Vertex.Size, 0);
-            vertexArray.SetElementArrayBuffer(elementArrayBuffer);
-
+            fullTextureProcessor = new FullTextureProcessor(settings, context, FragmentShaderText, new[] { "AverageDiffTexture", "LocalDiffTexture" });
             framebuffer = context.Create.Framebuffer();
-
             stepInfoBuffer = context.Create.Buffer(BufferTarget.UniformBuffer, 16, BufferUsageHint.StaticDraw);
-
             avgDiffsampler = context.Create.Sampler();
             localDiffsampler = context.Create.Sampler();
         }
@@ -175,25 +74,12 @@ void main()
         public unsafe void ApplyDiff(IContext context, ManualMipChain target, ManualMipChain spatialDiff, ITexture2D black, int mostDetailedMip)
         {
             var pipeline = context.Pipeline;
-
-            pipeline.VertexArray = vertexArray;
-            
-            pipeline.Rasterizer.SetDefault();
-            pipeline.Rasterizer.MultisampleEnable = false;
+            fullTextureProcessor.PrepareContext(context);
 
             pipeline.Framebuffer = framebuffer;
-            
             pipeline.UniformBuffers[0] = stepInfoBuffer;
-            
             pipeline.Samplers[0] = avgDiffsampler;
             pipeline.Samplers[1] = localDiffsampler;
-
-            pipeline.DepthStencil.SetDefault();
-            pipeline.DepthStencil.DepthMask = false;
-
-            pipeline.Blend.SetDefault(false);
-
-            pipeline.Program = decodeProgram;
 
             for (int i = EncodingConstants.SmallestMip; i >= mostDetailedMip; i--)
             {

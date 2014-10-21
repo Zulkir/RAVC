@@ -44,7 +44,6 @@ namespace Ravc.Client.OglDesktop
         private MainLoop mainLoop;
         private StreamReceivingStage streamReceivingStage;
         private CpuDecompressionStage cpuDecompressionStage;
-        private double totalSeconds;
 
         public int ClientWidth { get { return ClientSize.Width; } }
         public int ClientHeight { get { return ClientSize.Height; } }
@@ -79,15 +78,14 @@ namespace Ravc.Client.OglDesktop
             //var statisticsRenderer = new FormClientStatisticsRenderer();
             var statistics = new ClientStatistics(statisticsRenderer);
             var byteArrayPool = new ByteArrayPool();
-            var streamReceiver = settings.FromFile 
+            var streamReceiver = settings.AreFromFile 
                 ? (IStreamReceiver)new FileStreamReceiver(pclWorkarounds, byteArrayPool, fileName ?? "stream.dat")
                 : new TcpStreamReceiver(pclWorkarounds, settings, byteArrayPool);
             streamReceivingStage = new StreamReceivingStage(pclWorkarounds, streamReceiver);
             cpuDecompressionStage = new CpuDecompressionStage(pclWorkarounds, statistics, byteArrayPool);
             var mainThreadBorderStage = new MainThreadBorderStage(statistics);
             var textureInitializer = new TextureInitializer();
-            var textureRenderer = new TextureRenderer(pclWorkarounds, settings, context);
-            var gpuProcessingStage = new GpuProcessingStage(pclWorkarounds, statistics, settings, context, textureInitializer, textureRenderer);
+            var gpuProcessingStage = new GpuProcessingStage(pclWorkarounds, statistics, settings, context, textureInitializer);
             var timedBufferingStage = new TimeBufferingStage(settings, statistics, context);
             mainLoop = new MainLoop(pclWorkarounds, statistics, settings, context, this, mainThreadBorderStage, timedBufferingStage, statisticsRenderer, textureLoader);
 
@@ -106,7 +104,6 @@ namespace Ravc.Client.OglDesktop
 
         protected override void OnRenderFrame(FrameEventArgs e)
         {
-            totalSeconds += e.Time;
             mainLoop.OnNewFrame(e.Time);
             base.OnRenderFrame(e);
         }

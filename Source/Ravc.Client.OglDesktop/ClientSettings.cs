@@ -34,7 +34,7 @@ namespace Ravc.Client.OglDesktop
         public string PrimaryTcpHostName { get; private set; }
         public string SecondaryTcpHostName { get; private set; }
         public int TcpPort { get; private set; }
-        public bool FromFile { get; private set; }
+        public bool AreFromFile { get; private set; }
         public int QueueCapacity { get; private set; }
         public int TimeBufferInitiationLength { get; private set; }
         public float TimeOffsetOffset { get; private set; }
@@ -48,7 +48,7 @@ namespace Ravc.Client.OglDesktop
                     PrimaryTcpHostName = reader.ReadLine();
                     SecondaryTcpHostName = null;
                     TcpPort = int.Parse(reader.ReadLine());
-                    FromFile = bool.Parse(reader.ReadLine());
+                    AreFromFile = bool.Parse(reader.ReadLine());
                     QueueCapacity = int.Parse(reader.ReadLine());
                     TimeBufferInitiationLength = int.Parse(reader.ReadLine());
                     TimeOffsetOffset = float.Parse(reader.ReadLine(), CultureInfo.InvariantCulture);
@@ -59,7 +59,7 @@ namespace Ravc.Client.OglDesktop
                 PrimaryTcpHostName = "127.0.0.1";
                 SecondaryTcpHostName = null;
                 TcpPort = 7123;
-                FromFile = false;
+                AreFromFile = false;
                 QueueCapacity = 5;
                 TimeBufferInitiationLength = 5;
                 TimeOffsetOffset = 1;

@@ -35,7 +35,6 @@ namespace Ravc.Client.OglLib
 {
     public class GpuProcessingStage : IPipelineStage<UncompressedFrame, GpuSideFrame>
     {
-        private readonly IPclWorkarounds pclWorkarounds;
         private readonly IClientStatistics statistics;
         private readonly IContext context;
 
@@ -43,9 +42,6 @@ namespace Ravc.Client.OglLib
         private readonly GpuFinalDecoder gpuFinalDecoder;
         private readonly GpuSpatialDiffCalculator gpuSpatialDiffCalculator;
         private readonly GpuMipCalculator gpuMipCalculator;
-        private readonly GpuDebugger gpuDebugger;
-        private readonly ITextureInitializer textureInitializer;
-        private readonly TextureRenderer textureRenderer;
 
         private readonly Stopwatch stopwatch;
 
@@ -64,18 +60,14 @@ namespace Ravc.Client.OglLib
         private ManualMipChain blackTex;
         private ManualMipChain debugTex;
 
-        public GpuProcessingStage(IPclWorkarounds pclWorkarounds, IClientStatistics statistics, IClientSettings settings, IContext context, ITextureInitializer textureInitializer, TextureRenderer textureRenderer)
+        public GpuProcessingStage(IPclWorkarounds pclWorkarounds, IClientStatistics statistics, IClientSettings settings, IContext context, ITextureInitializer textureInitializer)
         {
-            this.pclWorkarounds = pclWorkarounds;
             this.statistics = statistics;
             this.context = context;
-            this.textureInitializer = textureInitializer;
-            this.textureRenderer = textureRenderer;
             texturePool = new TexturePool(context, textureInitializer);
             gpuFinalDecoder = new GpuFinalDecoder(pclWorkarounds, settings, context);
             gpuSpatialDiffCalculator = new GpuSpatialDiffCalculator(pclWorkarounds, settings, context);
             gpuMipCalculator = new GpuMipCalculator(pclWorkarounds, settings, context);
-            gpuDebugger = new GpuDebugger(pclWorkarounds, settings, context);
             stopwatch = new Stopwatch();
         }
 
@@ -120,13 +112,11 @@ namespace Ravc.Client.OglLib
             }
 
             stopwatch.Restart();
-            //pixelUnpackBuffer.SetDataByMapping(pclWorkarounds, input.DataPooled.Item);
             
             int offset = 0;
             fixed (byte* pData = input.DataPooled.Item)
             for (int i = input.Info.MostDetailedMip; i < EncodingConstants.MipLevels; i++)
             {
-                //spatialDiffTex.SetData(i, (IntPtr)offset, FormatColor.Rgba, FormatType.UnsignedByte, pixelUnpackBuffer);
                 spatialDiffTex.Levels[i].SetData(0, (IntPtr)pData + offset, FormatColor.Rgba, FormatType.UnsignedByte);
                 offset += (width >> i) * (height >> i) * 4;
             }
@@ -140,10 +130,7 @@ namespace Ravc.Client.OglLib
 
             gpuFinalDecoder.Decode(context, resultPooled.Item, temporalDiffTex, parentTex, input.Info.MostDetailedMip);
 
-            gpuMipCalculator.GenerateMips(context, resultPooled.Item, input.Info.MostDetailedMip);
-
-            //var debugTexPooled = texturePool.Extract(width, height);
-            //gpuDebugger.Process(context, debugTexPooled.Item[0], resultPooled.Item[1], temporalDiffTex[1]);
+            gpuMipCalculator.GenerateMips(context, resultPooled.Item);
 
             if (prevTexPooled != null)
                 prevTexPooled.Release();
@@ -152,9 +139,6 @@ namespace Ravc.Client.OglLib
 
             var gpuSideFrame = new GpuSideFrame(input.Info, resultPooled);
             nextStage.Consume(gpuSideFrame);
-
-            // remove from production
-            //resultPooled.Release();
         }
     }
 }

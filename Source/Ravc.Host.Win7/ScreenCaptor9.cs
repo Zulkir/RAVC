@@ -69,14 +69,6 @@ namespace Ravc.Host.Win7
             stopwatch = new Stopwatch();
         }
 
-        public void Start()
-        {
-        }
-
-        public void Stop()
-        {
-        }
-
         public void Dispose()
         {
             d3dSurface1.Dispose();

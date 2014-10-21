@@ -36,7 +36,7 @@ namespace Ravc.Client.OglLib
         private readonly IMainThreadBorderStage mainThreadBorderStage;
         private readonly IFinalFrameProvider finalFrameProvider;
         private readonly IClientStatistics statistics;
-        private readonly TextureRenderer textureRenderer;
+        private readonly FinalRenderer finalRenderer;
         private readonly IClientStatisticsRenderer statisticsRenderer;
         private readonly CursorRenderer cursorRenderer;
         private readonly Stopwatch stopwatch;
@@ -49,7 +49,7 @@ namespace Ravc.Client.OglLib
             this.mainThreadBorderStage = mainThreadBorderStage;
             this.finalFrameProvider = finalFrameProvider;
             this.statisticsRenderer = statisticsRenderer;
-            textureRenderer = new TextureRenderer(pclWorkarounds, settings, context);
+            finalRenderer = new FinalRenderer(pclWorkarounds, settings, context);
             cursorRenderer = new CursorRenderer(settings, context, textureLoader);
             stopwatch = new Stopwatch();
         }
@@ -61,7 +61,7 @@ namespace Ravc.Client.OglLib
 
             mainThreadBorderStage.DoMainThreadProcessing();
             var frameToRender = finalFrameProvider.GetFrameToRender();
-            textureRenderer.Render(context, gameWindow, frameToRender.MipChainPooled.Item[0]);
+            finalRenderer.Render(context, gameWindow, frameToRender.MipChainPooled.Item[0]);
 
             //statisticsRenderer.Render(context);
             cursorRenderer.Draw(context, gameWindow, frameToRender.MipChainPooled.Item[0], frameToRender.Info.MouseX, frameToRender.Info.MouseY);

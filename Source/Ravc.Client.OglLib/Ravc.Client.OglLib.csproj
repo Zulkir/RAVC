@@ -78,7 +78,8 @@
     <Compile Include="Texture2DExtensions.cs" />
     <Compile Include="TextureInitializer.cs" />
     <Compile Include="TexturePool.cs" />
-    <Compile Include="TextureRenderer.cs" />
+    <Compile Include="FullTextureProcessor.cs" />
+    <Compile Include="FinalRenderer.cs" />
     <Compile Include="TimeBufferingStage.cs" />
     <Compile Include="Vector4.cs" />
   </ItemGroup>

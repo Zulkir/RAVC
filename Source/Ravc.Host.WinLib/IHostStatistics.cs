@@ -26,7 +26,6 @@ namespace Ravc.Host.WinLib
 {
     public interface IHostStatistics
     {
-        void ShowForm();
         void OnPresent(double frameSeconds, double presentMs);
         void OnCapture(double ms);
         void OnGpuCalls(double ms);

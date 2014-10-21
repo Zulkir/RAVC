@@ -31,7 +31,7 @@ using Ravc.Client.OglLib.Pcl;
 
 namespace Ravc.Client.OglLib
 {
-    public class TextureRenderer
+    public class FinalRenderer
     {
         [StructLayout(LayoutKind.Sequential)]
         private struct Vertex
@@ -105,7 +105,7 @@ void main()
 }
 ";
 
-        public TextureRenderer(IPclWorkarounds pclWorkarounds, IClientSettings settings, IContext context)
+        public FinalRenderer(IPclWorkarounds pclWorkarounds, IClientSettings settings, IContext context)
         {
             this.pclWorkarounds = pclWorkarounds;
             var header = settings.IsEs ? EsHeader : DesktopHeader;

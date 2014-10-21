@@ -36,14 +36,12 @@ namespace Ravc.Host.WinLib
 {
     public class GpuSpatialDiffCalculator
     {
-        private readonly IComputeShader forwardComputeShader;
-        private readonly IComputeShader backwardComputeShader;
+        private readonly IComputeShader computeShader;
         private readonly int formatId;
 
         public GpuSpatialDiffCalculator(IDevice device)
         {
-            forwardComputeShader = device.Create.ComputeShader(ShaderParser.Parse(ForwardComputeShaderText));
-            backwardComputeShader = device.Create.ComputeShader(ShaderParser.Parse(BackwardComputeShaderText));
+            computeShader = device.Create.ComputeShader(ShaderParser.Parse(ForwardComputeShaderText));
             formatId = device.Adapter.GetSupportedFormats(FormatSupport.Texture2D).First(x => x.ExplicitFormat == ExplicitFormat.R8G8B8A8_UINT).ID;
         }
 
@@ -97,9 +95,7 @@ uint BuildCompressionInfo(float3 floatDiff)
 
         public void CalculateDiff(IDeviceContext context, ITexture2D target, ITexture2D source, int mostDetailedMip)
         {
-            //context.CopySubresourceRegion(target, EncodingConstants.SmallestMip, 0, 0, 0, source, EncodingConstants.SmallestMip, null);
-
-            context.ShaderForDispatching = forwardComputeShader;
+            context.ShaderForDispatching = computeShader;
 
             for (int i = EncodingConstants.SmallestMip; i >= mostDetailedMip; i--)
             {
@@ -113,62 +109,6 @@ uint BuildCompressionInfo(float3 floatDiff)
 
                 context.ComputeStage.ShaderResources[0] = null;
                 ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(0, null);
-            }
-
-            context.ComputeStage.UnorderedAccessResources[0] = null;
-            ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetUnorderedAccessView(0, null);
-        }
-
-        const string BackwardComputeShaderText = @"
-%meta
-Name = DiffCS
-ProfileDX10 = cs_5_0
-ThreadCountX = 16
-ThreadCountY = 16
-ThreadCountZ = 1
-
-%input
-int3 ThreadId : SDX10 = SV_DispatchThreadID
-
-%srvs
-Texture2D <uint4> Source : slot = 0
-Texture2D <uint4> OutputParent : slot = 1
-
-%uavs
-RWTexture2D <uint4> Output : slot = 0
-
-%code_global
-static int3 White = int3(256, 256, 256);
-static int2 Two = int2(2, 2);
-
-%code_main
-    int2 pixelCoord = INPUT(ThreadId).xy;
-    uint3 encodedDiff = (Source[pixelCoord].rgb + OutputParent[pixelCoord / 2].rgb) % White;
-    Output[pixelCoord] = uint4(encodedDiff, 255);
-";
-
-        public void Revert(IDeviceContext context, ITexture2D target, ITexture2D source, int mostDetailedMip)
-        {
-            context.CopySubresourceRegion(target, EncodingConstants.SmallestMip, 0, 0, 0, source, EncodingConstants.SmallestMip, null);
-
-            context.ShaderForDispatching = backwardComputeShader;
-
-            for (int i = EncodingConstants.SmallestMip - 1; i >= mostDetailedMip; i--)
-            {
-                var srv0 = source.ViewAsShaderResource(formatId, i, 1);
-                var srv1 = target.ViewAsShaderResource(formatId, i + 1, 1);
-                var uav = target.ViewAsUnorderedAccessResource(formatId, i);
-
-                context.ComputeStage.ShaderResources[0] = srv0;
-                context.ComputeStage.ShaderResources[1] = srv1;
-                context.ComputeStage.UnorderedAccessResources[0] = uav;
-
-                context.Dispatch(RavcMath.DivideAndCeil(target.Width >> i, 16), RavcMath.DivideAndCeil(target.Height >> i, 16), 1);
-
-                context.ComputeStage.ShaderResources[0] = null;
-                context.ComputeStage.ShaderResources[1] = null;
-                ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(0, null);
-                ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(1, null);
             }
 
             context.ComputeStage.UnorderedAccessResources[0] = null;

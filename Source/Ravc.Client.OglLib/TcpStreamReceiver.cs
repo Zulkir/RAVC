@@ -31,7 +31,6 @@ namespace Ravc.Client.OglLib
 {
     public class TcpStreamReceiver : IStreamReceiver
     {
-        private readonly IPclWorkarounds pclWorkarounds;
         private readonly ByteArrayPool byteArrayPool;
         private readonly IPclTcpClient tcpClient;
         private readonly byte[] metaDataBuffer;
@@ -42,7 +41,6 @@ namespace Ravc.Client.OglLib
         public TcpStreamReceiver(IPclWorkarounds pclWorkarounds, IClientSettings settings, ByteArrayPool byteArrayPool)
         {
             this.byteArrayPool = byteArrayPool;
-            this.pclWorkarounds = pclWorkarounds;
             primaryHostname = settings.PrimaryTcpHostName;
             secondaryHostname = settings.SecondaryTcpHostName;
             port = settings.TcpPort;

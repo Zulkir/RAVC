@@ -100,7 +100,6 @@ namespace Ravc.Host.Win7
 
             broadcaster.Start();
             cpuCompressionStage.Start();
-            screenCaptor.Start();
 
             eye.NewFrame += mainLoop.OnNewFrame;
 
@@ -112,7 +111,6 @@ namespace Ravc.Host.Win7
 
             cpuCompressionStage.Stop();
             broadcaster.Stop();
-            screenCaptor.Stop();
         }
     }
 }

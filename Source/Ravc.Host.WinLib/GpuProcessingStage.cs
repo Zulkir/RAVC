@@ -110,9 +110,6 @@ namespace Ravc.Host.WinLib
                 }
             }
 
-            //context.PixelStage.ShaderResources[0] = null;
-            //context.ConsumeDrawPipeline();
-
             var copyPooled = texturePool.Extract(width, height);
             var copyTex = copyPooled.Item;
             gpuChannelSwapper.SwapBgraToRgba(context, copyTex, capturedFrameTex);
@@ -120,14 +117,11 @@ namespace Ravc.Host.WinLib
             ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetUnorderedAccessView(0, null);
             ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(0, null);
 
-            //context.GenerateMips(copyTex.ViewAsShaderResource(formatRgbaUnormSrgbId, 0, copyTex.MipLevels));
             gpuMipGenerator.GenerateMips(context, copyTex, copyTex.MipLevels);
 
             ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetUnorderedAccessView(0, null);
             ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(0, null);
             context.ComputeStage.UnorderedAccessResources[0] = null;
-
-            //textureRenderer.Render(context, context.Device.PrimarySwapChain.GetCurrentColorBuffer(), copyTex, 6);
 
             capturedFramePooled.Release();
 
@@ -145,16 +139,8 @@ namespace Ravc.Host.WinLib
             var spatialDiffTex = spatialDiffPooled.Item;
             gpuSpatialDiffCalculator.CalculateDiff(context, spatialDiffTex, temporalDiffTex, input.Info.MostDetailedMip);
 
-            //textureRenderer.Render(context, context.Device.PrimarySwapChain.GetCurrentColorBuffer(), spatialDiffTex, input.Info.MostDetailedMip);
-
-            //var decodedTemporalDiffPooled = texturePool.Extract(width, height);
-            //gpuSpatialDiffCalculator.Revert(context, decodedTemporalDiffPooled.Item, spatialDiffPooled.Item, input.Info.MostDetailedMip);
-
             var encodedFrame = new GpuEncodedFrame(input.Info, spatialDiffPooled);
             nextStage.Consume(encodedFrame);
-            //encodedFrame.DiffPooled.Release();
-
-            
 
             if (prevFrameTexPooled != null)
             {
@@ -174,12 +160,8 @@ namespace Ravc.Host.WinLib
             ((CDeviceContext)context).D3DDeviceContext.ComputeShader.SetShaderResource(1, null);
 
             temporalDiffPooled.Release();
-            //decodedTemporalDiffPooled.Release();
 
-            //context.GenerateMips(prevFrameTexPooled.Item.ViewAsShaderResource(formatRgbaUnormId, 0, prevFrameTexPooled.Item.MipLevels));
             gpuMipGenerator.GenerateMips(context, prevFrameTexPooled.Item, prevFrameTexPooled.Item.MipLevels);
-
-            //textureRenderer.Render(context, context.Device.PrimarySwapChain.GetCurrentColorBuffer(), prevFrameTexPooled.Item.ViewAsShaderResource(formatRgbaUnormId, 0, 1), width, height);
         }
     }
 }

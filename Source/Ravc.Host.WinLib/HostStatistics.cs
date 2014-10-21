@@ -38,7 +38,6 @@ namespace Ravc.Host.WinLib
         private readonly StatCounter cpuProcessingQueue;
         private readonly StatCounter compressionTime;
 
-        private int frames;
         private int width;
         private int height;
         private int compressedBytes;
@@ -66,7 +65,6 @@ namespace Ravc.Host.WinLib
             frameTime.AddValue(frameSeconds);
             presentTime.AddValue(presentMs);
 
-            frames++;
             if (frameTime.Accumulated > 1.0)
             {
                 form.lbFps.Text = FormatValue(1.0 / frameTime.Average);
@@ -87,7 +85,6 @@ namespace Ravc.Host.WinLib
                 cpuProcessingQueue.Reset();
                 compressionTime.Reset();
 
-                frames = 0;
                 compressedBytes = 0;
             }
         }

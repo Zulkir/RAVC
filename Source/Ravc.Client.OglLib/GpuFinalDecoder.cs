@@ -23,7 +23,6 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Runtime.InteropServices;
 using ObjectGL.Api;
 using ObjectGL.Api.Objects;
 using ObjectGL.Api.Objects.Resources;
@@ -33,46 +32,11 @@ namespace Ravc.Client.OglLib
 {
     public class GpuFinalDecoder
     {
-        [StructLayout(LayoutKind.Sequential)]
-        private struct Vertex
-        {
-            public float PositionX;
-            public float PositionY;
-
-            public Vertex(float px, float py)
-            {
-                PositionX = px;
-                PositionY = py;
-            }
-
-            public const int Size = 2 * sizeof(float);
-        }
-
         private readonly IPclWorkarounds pclWorkarounds;
-        private readonly IShaderProgram program;
-        private readonly IVertexArray vertexArray;
+        private readonly FullTextureProcessor fullTextureProcessor;
         private readonly IFramebuffer framebuffer;
         private readonly IBuffer mipInfoBuffer;
         private readonly ISampler sampler;
-
-        private const string DesktopHeader = 
-@"#version 400";
-        private const string EsHeader =
-@"#version 300 es
-
-precision highp float;
-precision highp int;
-precision highp sampler2D;";
-
-        private const string VertexShaderText =
-@"
-in vec4 in_position;
-
-void main()
-{
-    gl_Position = vec4(in_position.x, -in_position.y, 0.0f, 1.0f);
-}
-";
 
         private const string FragmentShaderText =
 @"
@@ -132,67 +96,17 @@ void main()
         public GpuFinalDecoder(IPclWorkarounds pclWorkarounds, IClientSettings settings, IContext context)
         {
             this.pclWorkarounds = pclWorkarounds;
-            var header = settings.IsEs ? EsHeader : DesktopHeader;
-            var vertexShader = context.Create.VertexShader(header + VertexShaderText);
-            IFragmentShader fragmentShader = null; 
-            try
-            {
-                fragmentShader = context.Create.FragmentShader(header + FragmentShaderText);
-            }
-            catch (Exception ex)
-            {
-                int x = 0;
-            }
-            
-            program = context.Create.Program(new ShaderProgramDescription
-            {
-                VertexShaders = new[] { vertexShader },
-                FragmentShaders = new[] { fragmentShader },
-                VertexAttributeNames = new[] { "in_position" },
-                UniformBufferNames = new[] { "MipInfoBuffer" },
-                SamplerNames = new[] { "DiffTexture", "PrevTextureDetailed", "PrevTextureMip" }
-            });
-
-            var vertexBuffer = context.Create.Buffer(BufferTarget.ArrayBuffer, 4 * Vertex.Size, BufferUsageHint.StaticDraw, new[]
-            {
-                new Vertex(-1f, 1f),
-                new Vertex(1f, 1f),
-                new Vertex(1f, -1f),
-                new Vertex(-1f, -1f)
-            });
-
-            var elementArrayBuffer = context.Create.Buffer(BufferTarget.ElementArrayBuffer, 6 * sizeof(ushort), BufferUsageHint.StaticDraw, new ushort[]
-            {
-                0, 1, 2, 0, 2, 3
-            });
-
-            vertexArray = context.Create.VertexArray();
-            vertexArray.SetVertexAttributeF(0, vertexBuffer, VertexAttributeDimension.Two, VertexAttribPointerType.Float, false, Vertex.Size, 0);
-            vertexArray.SetElementArrayBuffer(elementArrayBuffer);
-
+            fullTextureProcessor = new FullTextureProcessor(settings, context, FragmentShaderText, new[] { "DiffTexture", "PrevTextureDetailed", "PrevTextureMip" });
             framebuffer = context.Create.Framebuffer();
-
             mipInfoBuffer = context.Create.Buffer(BufferTarget.UniformBuffer, 16, BufferUsageHint.DynamicDraw);
-
             sampler = context.Create.Sampler();
         }
 
         public unsafe void Decode(IContext context, ManualMipChain target, ManualMipChain temporalDiff, ManualMipChain previous, int mostDetailedMip)
         {
             var pipeline = context.Pipeline;
-
-            pipeline.Program = program;
-            pipeline.VertexArray = vertexArray;
-
+            fullTextureProcessor.PrepareContext(context);
             pipeline.Viewports[0].Set(target.Width, target.Height);
-            pipeline.Rasterizer.SetDefault();
-            pipeline.Rasterizer.MultisampleEnable = false;
-
-            pipeline.DepthStencil.SetDefault();
-            pipeline.DepthStencil.DepthMask = false;
-
-            pipeline.Blend.SetDefault(false);
-
             framebuffer.AttachTextureImage(FramebufferAttachmentPoint.Color0, target[0], 0);
             pipeline.Framebuffer = framebuffer;
 
@@ -210,7 +124,6 @@ void main()
             pipeline.Textures[2] = previous[mostDetailedMip];
             pipeline.Samplers[2] = sampler;
 
-            //framebuffer.ClearColor(0, new Color4(0, 1, 0, 1));
             context.DrawElements(BeginMode.Triangles, 6, DrawElementsType.UnsignedShort, 0);
             framebuffer.DetachColorStartingFrom(0);
         }

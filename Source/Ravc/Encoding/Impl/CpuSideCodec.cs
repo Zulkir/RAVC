@@ -63,8 +63,6 @@ namespace Ravc.Encoding.Impl
         private readonly IPclWorkarounds pclWorkarounds;
         private readonly ByteArrayPool byteArrayPool;
         private readonly Pool<PartInfo[]> partInfoArrayPool;
-        //private readonly byte[] blockEncodingWriteLut;
-        //private readonly byte[] blockEncodingReadLut;
         private readonly byte[] dottedEncodingReadLut;
 
         public CpuSideCodec(IPclWorkarounds pclWorkarounds, ByteArrayPool byteArrayPool)
@@ -74,36 +72,9 @@ namespace Ravc.Encoding.Impl
 
             partInfoArrayPool = new Pool<PartInfo[]>(() => new PartInfo[PartCount]);
 
-            //blockEncodingWriteLut = new byte[TernaryBlockEncoding.WriteLutSize];
-            //fixed (byte* pWriteLut = blockEncodingWriteLut)
-            //    TernaryBlockEncoding.BuildWriteLut(pWriteLut);
-
-            //blockEncodingReadLut = new byte[TernaryBlockEncoding.ReadLutSize];
-            //fixed (byte* pReadLut = blockEncodingReadLut)
-            //    TernaryBlockEncoding.BuildReadLut(pReadLut);
-
             dottedEncodingReadLut = new byte[DottedEncoding.ReadLutSize];
             fixed (byte* pReadLut = dottedEncodingReadLut)
                 DottedEncoding.BuildReadLut(pReadLut);
-        }
-
-        private static int CalculateAuxiliaryRowSize(int width)
-        {
-            return width * 6;
-        }
-
-        private static void RemoveAlpha(byte* destination, byte* source, int width)
-        {
-            var iDest = (int*)destination;
-            var iSource = (int*)source;
-            while (width > 0)
-            {
-                //*iDest = *iSource;
-                *iDest = *iSource & 0x00FFFFFF;
-                iDest++;
-                iSource++;
-                width--;
-            }
         }
 
         private volatile int cc;
@@ -134,14 +105,13 @@ namespace Ravc.Encoding.Impl
                     cc = 0;
                 }
 
-                var lutLocal = (byte*)0;
                 WriteFrameInfo(frame, result);
                 var partInfos = partInfoBuffer.Item;
                 FillPartInfosForCompression(partInfos, frame.Info, source, auxiliary, result);
                 var compressedPartSizesTable = (int*)partSizes;
                 for (int i = 0; i < PartCount; i++)
                 //Parallel.For(0, PartCount, i =>
-                    CompressPart(i, partInfos, lutLocal, compressedPartSizesTable);//);
+                    CompressPart(i, partInfos, compressedPartSizesTable);//);
                 var partOffsetsTable = (int*)(result + CompressedFrameInfo.Size);
                 FillPartOffsetsTable(partOffsetsTable, compressedPartSizesTable);
                 PackCompressedParts(partInfos, result, partOffsetsTable, compressedPartSizesTable);
@@ -182,22 +152,11 @@ namespace Ravc.Encoding.Impl
             partInfos[LastPartIndex].UncompressedSize = frameInfo.UncompressedSize - (PartCount - 1) * typicalPartSizeInPixelTuples * 16;
         }
 
-        private static void CompressPart(int i, PartInfo[] partInfos, byte* lut, int* partSizesTable)
+        private static void CompressPart(int i, PartInfo[] partInfos, int* partSizesTable)
         {
             var part = partInfos[i];
             int sizeInPixels = part.UncompressedSize / 4;
-            //SeparateChannelsTransform.Apply(part.Result, part.Source, sizeInPixels);
-            //int separatedSize = sizeInPixels * 3;
-            //DeltaCoding.Apply(part.Result, separatedSize);
-            //partSizesTable[i] = TernaryBlockEncoding.Apply(part.Auxiliary, part.Result, lut, separatedSize);
-
             partSizesTable[i] = DottedEncoding.Apply(part.Auxiliary, part.Source, sizeInPixels);
-
-            //cpblk((IntPtr)part.Auxiliary, (IntPtr)part.Source, part.UncompressedSize);
-            //partSizesTable[i] = part.UncompressedSize;
-
-            //RemoveAlpha(part.Result, part.Source, sizeInPixels);
-            //partSizesTable[i] = TernaryBlockEncoding.Apply(part.Auxiliary, part.Result, lut, part.UncompressedSize);
         }
 
         private static void FillPartOffsetsTable(int* partOffsetsTable, int* partSizesTable)
@@ -276,17 +235,7 @@ namespace Ravc.Encoding.Impl
         {
             var part = partInfos[index];
             int sizeInPixels = part.UncompressedSize / 4;
-            //int separatedSize = sizeInPixels * 3;
-            
             DottedEncoding.Revert(part.Result, part.Source, lut, sizeInPixels);
-
-            //TernaryBlockEncoding.Revert(part.Auxiliary, part.Source, lut, separatedSize);
-            //DeltaCoding.Revert(part.Auxiliary, separatedSize);
-            //SeparateChannelsTransform.Revert(part.Result, part.Auxiliary, sizeInPixels);
-
-            //cpblk((IntPtr)part.Result, (IntPtr)part.Source, part.UncompressedSize);
-
-            //TernaryBlockEncoding.Revert(part.Result, part.Source, lut, part.UncompressedSize);
         }
         #endregion
     }

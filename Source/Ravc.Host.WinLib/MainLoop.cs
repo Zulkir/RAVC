@@ -111,11 +111,6 @@ namespace Ravc.Host.WinLib
                     var frameType = makeAbsoluteFrame ? FrameType.Absolute : FrameType.Relative;
                     makeAbsoluteFrame = false;
 
-                    if (frameType == FrameType.Absolute)
-                    {
-                        int x = 0;
-                    }
-
                     GpuRawFrame capturedFrame;
                     if (screenCaptor.TryGetCaptured(context, beholderRect, frameType,
                         DiffThresholdSequence[processedFrameIndex % DiffThresholdSequence.Length],
@@ -143,12 +138,6 @@ namespace Ravc.Host.WinLib
                 swapChain.EndScene();
 
                 stopwatch.Restart();
-                //swapChain.Present();
-                //var output = context.Device.Adapter.Outputs[0];
-                //if (output is COutput)
-                //    ((COutput)output).DXGIOutput.WaitForVerticalBlank();
-                //else
-                //    swapChain.Present();
                 swapChain.Present();
                 stopwatch.Stop();
                 statistics.OnPresent(realTime.ElapsedRealTime, stopwatch.Elapsed.TotalMilliseconds);

@@ -24,20 +24,58 @@ THE SOFTWARE.
 
 using System;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Beholder;
 using Beholder.Core;
 using Beholder.Libraries.SharpDX11.Core;
 using Beholder.Math;
 using Beholder.Platform;
 using Beholder.Resources;
+using Beholder.Shaders;
 
 namespace Ravc.Host.WinLib
 {
-    public class TextureRenderer : FullScreenQuadRendererBase
+    public class TextureRenderer// : FullScreenQuadRendererBase
     {
+        [StructLayout(LayoutKind.Sequential)]
+        private struct Vertex
+        {
+            public Vector2 Position;
+            public Vector2 TexCoord;
+        }
+
+        private readonly IShaderCombination shaderCombination;
+        private readonly IVertexLayout vertexLayout;
+        private readonly IBuffer vertexBuffer;
+        private readonly IBuffer indexBuffer;
+
+        private readonly IRasterizerState rasterizerState;
+        private readonly IDepthStencilState depthStencilState;
+        private readonly IBlendState blendState;
+
         private readonly IBuffer dimensionsBuffer;
         private readonly ISamplerState samplerState;
         private readonly int formatRgba8UnormId;
+
+        const string VertexShaderText = @"
+%meta
+Name = StarVS
+ProfileDX9 = vs_2_0
+ProfileDX10 = vs_4_0
+ProfileGL3 = 150
+
+%input
+float2 Position    : SDX9 = POSITION,  SDX10 = %name, SGL3 = %name
+float2 TexCoord    : SDX9 = TEXCOORD,  SDX10 = %name, SGL3 = %name
+
+%output
+float4 Position : SDX9 = POSITION0, SDX10 = SV_Position, SGL3 = gl_Position
+float2 TexCoord : SDX9 = TEXCOORD,  SDX10 = %name, SGL3 = %name
+
+%code_main
+    OUTPUT(Position) = float4(INPUT(Position), 0.0, 1.0);
+    OUTPUT(TexCoord) = INPUT(TexCoord);
+";
 
         const string PixelShaderText = @"
 %meta
@@ -122,8 +160,58 @@ static float3 Half = float3(0.5, 0.5, 0.5);
 ";
 
         public TextureRenderer(IDevice device)
-            : base(device, PixelShaderText)
         {
+            var vertexShader = device.Create.VertexShader(ShaderParser.Parse(VertexShaderText));
+            var pixelShader = device.Create.PixelShader(ShaderParser.Parse(PixelShaderText));
+            shaderCombination = device.Create.ShaderCombination(vertexShader, null, null, null, pixelShader);
+
+            vertexLayout = device.Create.VertexLayout(vertexShader, new[]
+            {
+                new VertexLayoutElement(ExplicitFormat.R32G32_FLOAT, 0, 0),
+                new VertexLayoutElement(ExplicitFormat.R32G32_FLOAT, 0, sizeof(float) * 2)
+            });
+
+            vertexBuffer = device.Create.Buffer(new BufferDescription
+            {
+                BindFlags = BindFlags.VertexBuffer,
+                Usage = Usage.Immutable,
+                SizeInBytes = 4 * sizeof(float) * 4
+            }, new SubresourceData(new[]
+            {
+                new Vertex { Position = new Vector2(-1,  1), TexCoord = new Vector2(0, 0) },
+                new Vertex { Position = new Vector2( 1,  1), TexCoord = new Vector2(1, 0) },
+                new Vertex { Position = new Vector2( 1, -1), TexCoord = new Vector2(1, 1) },
+                new Vertex { Position = new Vector2(-1, -1), TexCoord = new Vector2(0, 1) }
+            }));
+
+            indexBuffer = device.Create.Buffer(new BufferDescription
+            {
+                BindFlags = BindFlags.IndexBuffer,
+                Usage = Usage.Immutable,
+                SizeInBytes = 6 * sizeof(ushort),
+                ExtraFlags = ExtraFlags.SixteenBitIndices
+            }, new SubresourceData(new ushort[]
+            {
+                0, 1, 3, 1, 2, 3
+            }));
+
+            rasterizerState = device.Create.RasterizerState(new RasterizerDescription
+            {
+                AntialiasedLineEnable = false,
+                CullMode = Cull.None,
+                DepthBias = 0,
+                DepthBiasClamp = 0,
+                DepthClipEnable = false,
+                FillMode = FillMode.Solid,
+                FrontFaceWinding = Winding.Clockwise,
+                MultisampleEnable = false,
+                ScissorEnable = false,
+                SlopeScaledDepthBias = 0
+            });
+
+            depthStencilState = device.Create.DepthStencilState(DepthStencilDescription.Default);
+            blendState = device.Create.BlendState(BlendDescription.Default);
+
             dimensionsBuffer = device.Create.Buffer(new BufferDescription
             {
                 BindFlags = BindFlags.UniformBuffer,
@@ -151,7 +239,19 @@ static float3 Half = float3(0.5, 0.5, 0.5);
 
         public unsafe void Render(IDeviceContext context, IRenderTargetView target, ITexture2D texture, int mipLevel)
         {
-            SetNonPixelStages(context, target);
+            context.ShadersForDrawing = shaderCombination;
+
+            context.InputAssembler.PrimitiveTopology = PrimitiveTopology.TriangleList;
+            context.InputAssembler.VertexLayout = vertexLayout;
+            context.InputAssembler.VertexSources[0] = new VertexSource(vertexBuffer, 0, 4 * sizeof(float));
+            context.InputAssembler.IndexSource = new IndexSource(indexBuffer, 0, IndexFormat.SixteenBit);
+
+            context.Rasterizer.Viewports.Set(new Viewport(0, 0, target.Width, target.Height));
+            context.Rasterizer.State = rasterizerState;
+
+            context.OutputMerger.RenderTargets.Set(target);
+            context.OutputMerger.DepthStencilState = depthStencilState;
+            context.OutputMerger.BlendState = blendState;
 
             var dimensions = new Vector2(texture.Width, texture.Height);
             context.SetSubresourceData(dimensionsBuffer, 0, new SubresourceData((IntPtr)(&dimensions)));
@@ -160,7 +260,7 @@ static float3 Half = float3(0.5, 0.5, 0.5);
             context.PixelStage.ShaderResources[0] = texture.ViewAsShaderResource(formatRgba8UnormId, mipLevel, 1);
             context.PixelStage.Samplers[0] = samplerState;
 
-            Draw(context);
+            context.DrawIndexed(6, 0, 0);
 
             context.PixelStage.ShaderResources[0] = null;
             ((CDeviceContext)context).D3DDeviceContext.PixelShader.SetShaderResource(0, null);
