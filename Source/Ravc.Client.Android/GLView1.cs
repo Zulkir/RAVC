@@ -40,6 +40,7 @@ namespace Ravc.Client.Android
 {
     class GLView1 : AndroidGameView, IRavcGameWindow
     {
+		private readonly IClientSettings settings;
         private readonly IGL gl;
         private readonly INativeGraphicsContext nativeGraphicsContext;
         private readonly AssetManager assetManager;
@@ -52,9 +53,11 @@ namespace Ravc.Client.Android
         public int ClientWidth { get { return Width; } }
         public int ClientHeight { get { return Height; } }
 
-        public GLView1(Context context)
+		public GLView1(Context context, IClientSettings settings)
             : base(context)
         {
+			this.settings = settings;
+
             gl = new AndroidGL();
             nativeGraphicsContext = new GameViewContext(this);
             assetManager = context.Assets;
@@ -108,21 +111,20 @@ namespace Ravc.Client.Android
         {
             context = new ObjectGL.CachingImpl.Context(gl, nativeGraphicsContext);
             var pclWorkarounds = new PclWorkarounds();
-            var settings = new ClientSettings();
             var textureLoader = new TextureLoader(assetManager);
             var spritefont = new Spritefont(settings, context, textureLoader);
             var statisticsRenderer = new OnScreenClientStatisticsRenderer(spritefont);
             var statistics = new ClientStatistics(statisticsRenderer);
             var byteArrayPool = new ByteArrayPool();
-            var streamReceiver = settings.FromFile
+            var streamReceiver = settings.AreFromFile
                 ? (IStreamReceiver)new AssetStreamReceiver(assetManager, byteArrayPool, "stream.dat")
                 : new TcpStreamReceiver(pclWorkarounds, settings, byteArrayPool);
             streamReceivingStage = new StreamReceivingStage(pclWorkarounds, streamReceiver);
             cpuDecompressionStage = new CpuDecompressionStage(pclWorkarounds, statistics, byteArrayPool);
             var mainThreadBorderStage = new MainThreadBorderStage(statistics);
             var textureInitializer = new TextureInitializer();
-            var textureRenderer = new TextureRenderer(pclWorkarounds, settings, context);
-            var gpuProcessingStage = new GpuProcessingStage(pclWorkarounds, statistics, settings, context, textureInitializer, textureRenderer);
+            //var textureRenderer = new TextureRenderer(pclWorkarounds, settings, context);
+			var gpuProcessingStage = new GpuProcessingStage(pclWorkarounds, statistics, settings, context, textureInitializer);
             var timedBufferingStage = new TimeBufferingStage(settings, statistics, context);
             mainLoop = new MainLoop(pclWorkarounds, statistics, settings, context, this, mainThreadBorderStage, timedBufferingStage, statisticsRenderer, textureLoader);
 

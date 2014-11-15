@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent">
+    <TextView
+        android:id="@+id/HostNameLabel"
+        android:text="Hostname or IP address:"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content" />
+    <EditText
+        android:id="@+id/HostName"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/HostNameLabel"
+        android:imeOptions="actionNext"
+        android:maxLines="1"
+        android:text="192.168.42.154" />
+    <TextView
+        android:id="@+id/PortLabel"
+        android:text="Port:"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content" />
+    <EditText
+        android:id="@+id/Port"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/PortLabel"
+        android:imeOptions="actionNext"
+        android:maxLines="1"
+        android:text="7123"
+        android:numeric="integer"
+        android:inputType="number" />
+    <TextView
+        android:id="@+id/BufferingOffsetLabel"
+        android:text="Buffering time offset (sec):"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content" />
+    <EditText
+        android:id="@+id/BufferingOffset"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/BufferingOffsetLabel"
+        android:imeOptions="actionNext"
+        android:maxLines="1"
+        android:text="-1.0"
+        android:inputType="numberDecimal" />
+    <TextView
+        android:id="@+id/ShowDebugInfoLabel"
+        android:text="Show debug info:"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content" />
+    <CheckBox
+        android:id="@+id/ShowDebugInfo"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/ShowDebugInfoLabel" />
+    <Button
+        android:id="@+id/ConnectButton"
+        android:text="Connect"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content" />
+</LinearLayout>

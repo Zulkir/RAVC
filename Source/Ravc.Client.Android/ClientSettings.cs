@@ -32,20 +32,22 @@ namespace Ravc.Client.Android
         public string PrimaryTcpHostName { get; private set; }
         public string SecondaryTcpHostName { get; private set; }
         public int TcpPort { get; private set; }
-        public bool FromFile { get; private set; }
+        public bool AreFromFile { get; private set; }
         public int QueueCapacity { get; private set; }
         public int TimeBufferInitiationLength { get; private set; }
-        public float TimeOffsetOffset { get; private set; }
+        public float BufferingOffset { get; private set; }
+		public bool ShowDebugInfo { get; private set; }
 
-        public ClientSettings()
+		public ClientSettings(string primaryTcpHostName, int port, double bufferingOffset, bool showDebugInfo)
         {
-            PrimaryTcpHostName = "192.168.1.17";
-            SecondaryTcpHostName = "192.168.42.154";
-            TcpPort = 7123;
-            FromFile = false;
+			PrimaryTcpHostName = primaryTcpHostName;
+			SecondaryTcpHostName = "192.168.42.154";
+			TcpPort = port;
+            AreFromFile = false;
             QueueCapacity = 10;
             TimeBufferInitiationLength = 1;
-            TimeOffsetOffset = -1.0f;
+			BufferingOffset = (float)bufferingOffset;
+			ShowDebugInfo = showDebugInfo;
         }
     }
 }

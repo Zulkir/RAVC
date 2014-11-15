@@ -31,6 +31,7 @@ namespace Ravc.Client.OglLib
 {
     public class MainLoop
     {
+        private readonly IClientSettings settings;
         private readonly IContext context;
         private readonly IRavcGameWindow gameWindow;
         private readonly IMainThreadBorderStage mainThreadBorderStage;
@@ -43,6 +44,7 @@ namespace Ravc.Client.OglLib
 
         public MainLoop(IPclWorkarounds pclWorkarounds, IClientStatistics statistics, IClientSettings settings, IContext context, IRavcGameWindow gameWindow, IMainThreadBorderStage mainThreadBorderStage, IFinalFrameProvider finalFrameProvider, IClientStatisticsRenderer statisticsRenderer, ITextureLoader textureLoader)
         {
+            this.settings = settings;
             this.context = context;
             this.statistics = statistics;
             this.gameWindow = gameWindow;
@@ -63,7 +65,9 @@ namespace Ravc.Client.OglLib
             var frameToRender = finalFrameProvider.GetFrameToRender();
             finalRenderer.Render(context, gameWindow, frameToRender.MipChainPooled.Item[0]);
 
-            //statisticsRenderer.Render(context);
+            if (settings.ShowDebugInfo)
+                statisticsRenderer.Render(context);
+            
             cursorRenderer.Draw(context, gameWindow, frameToRender.MipChainPooled.Item[0], frameToRender.Info.MouseX, frameToRender.Info.MouseY);
 
             statistics.OnFrameRendered();

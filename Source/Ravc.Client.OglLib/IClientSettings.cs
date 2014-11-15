@@ -30,9 +30,10 @@ namespace Ravc.Client.OglLib
         string PrimaryTcpHostName { get; }
         string SecondaryTcpHostName { get; }
         int TcpPort { get; }
-        bool AreFromFile { get; }
         int QueueCapacity { get; }
         int TimeBufferInitiationLength { get; }
-        float TimeOffsetOffset { get; }
+        float BufferingOffset { get; }
+        bool ShowDebugInfo { get; }
+        bool AreFromFile { get; }
     }
 }

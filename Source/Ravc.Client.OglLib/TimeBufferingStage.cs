@@ -62,7 +62,7 @@ namespace Ravc.Client.OglLib
             {
                 if (queue.Count < settings.TimeBufferInitiationLength)
                     return current;
-                timeOffset = localTimestamp - queue.Peek().Info.Timestamp + settings.TimeOffsetOffset;
+                timeOffset = localTimestamp - queue.Peek().Info.Timestamp + settings.BufferingOffset;
                 initiationComplete = true;
             }
 

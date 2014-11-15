@@ -37,7 +37,8 @@ namespace Ravc.Client.OglDesktop
         public bool AreFromFile { get; private set; }
         public int QueueCapacity { get; private set; }
         public int TimeBufferInitiationLength { get; private set; }
-        public float TimeOffsetOffset { get; private set; }
+        public float BufferingOffset { get; private set; }
+        public bool ShowDebugInfo { get; private set; }
 
         public ClientSettings()
         {
@@ -51,7 +52,8 @@ namespace Ravc.Client.OglDesktop
                     AreFromFile = bool.Parse(reader.ReadLine());
                     QueueCapacity = int.Parse(reader.ReadLine());
                     TimeBufferInitiationLength = int.Parse(reader.ReadLine());
-                    TimeOffsetOffset = float.Parse(reader.ReadLine(), CultureInfo.InvariantCulture);
+                    BufferingOffset = float.Parse(reader.ReadLine(), CultureInfo.InvariantCulture);
+                    ShowDebugInfo = bool.Parse(reader.ReadLine());
                 }
             }
             catch
@@ -62,7 +64,8 @@ namespace Ravc.Client.OglDesktop
                 AreFromFile = false;
                 QueueCapacity = 5;
                 TimeBufferInitiationLength = 5;
-                TimeOffsetOffset = 1;
+                BufferingOffset = 1;
+                ShowDebugInfo = true;
             }
         }
     }
