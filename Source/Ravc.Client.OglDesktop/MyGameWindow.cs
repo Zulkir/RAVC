@@ -28,6 +28,7 @@ using ObjectGL.CachingImpl;
 using ObjectGL.GL4;
 using OpenTK;
 using OpenTK.Graphics;
+using OpenTK.Input;
 using Ravc.Client.OglLib;
 using Ravc.Streaming;
 using Ravc.Utility;
@@ -44,6 +45,7 @@ namespace Ravc.Client.OglDesktop
         private MainLoop mainLoop;
         private StreamReceivingStage streamReceivingStage;
         private CpuDecompressionStage cpuDecompressionStage;
+        private bool isFullscreen;
 
         public int ClientWidth { get { return ClientSize.Width; } }
         public int ClientHeight { get { return ClientSize.Height; } }
@@ -62,12 +64,6 @@ namespace Ravc.Client.OglDesktop
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
-
-            //OpenTK.Graphics.OpenGL.GL.Amd.DebugMessageCallback((source, type, id, severity, message, param) =>
-            //{
-            //    throw new Exception("!!!!!!!!!!");
-            //    Debug.WriteLine("{0} | {1} | {2} | {3} | {4}", source, type, id, severity, message);
-            //}, IntPtr.Zero);
 
             context = new Context(gl, nativeGraphicsContext);
             var pclWorkarounds = new PclWorkarounds();
@@ -113,6 +109,24 @@ namespace Ravc.Client.OglDesktop
             streamReceivingStage.Stop();
             cpuDecompressionStage.Stop();
             base.OnClosing(e);
+        }
+
+        protected override void OnKeyDown(KeyboardKeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            if (e.Key == Key.F11)
+            {
+                if (!isFullscreen)
+                {
+                    WindowState = WindowState.Fullscreen;
+                    isFullscreen = true;
+                }
+                else
+                {
+                    WindowState = WindowState.Normal;
+                    isFullscreen = false;
+                }
+            }
         }
     }
 }
